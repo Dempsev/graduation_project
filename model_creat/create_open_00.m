@@ -16,8 +16,23 @@ model = set_params_01(model);
 % 几何
 model = build_geom_02(model);
 
-% 取出路径（getter 要加括号）
-mpath = char(model.modelPath());   % 关键：括号 + char
+% 材料
+model = set_material_03(model);
+
+% 固体力学
+model = set_physics_04(model);
+
+% 网格
+model = set_mesh_05(model);
+
+% 研究
+model = set_study_06(model);
+
+% 结果
+model = set_results_07(model);
+
+% Get model path
+mpath = char(model.modelPath());
 
 mphfile = fullfile(mpath, 'mother_rebuild.mph');
 
