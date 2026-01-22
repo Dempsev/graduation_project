@@ -6,35 +6,33 @@ ModelUtil.showProgress(true);
 
 model = ModelUtil.create('Model');
 
-% 设定路径（setter）
+% Model path and label
 model.modelPath('D:/graduation_project/model');
 model.label('mother_rebuild');
 
-% 设置参数
+% Parameters
 model = set_params_01(model);
 
-% 几何
+% Geometry
 model = build_geom_02(model);
 
-% 材料
+% Materials
 model = set_material_03(model);
 
-% 固体力学
+% Physics
 model = set_physics_04(model);
 
-% 网格
+% Mesh
 model = set_mesh_05(model);
 
-% 研究
+% Run compute before results (ensure parametric solution exists)
 model = set_study_06(model);
+model.batch('p2').run('compute');
 
-% 结果
+% Results (create after compute)
 model = set_results_07(model);
 
-% Get model path
+% Save only; open manually if needed
 mpath = char(model.modelPath());
-
 mphfile = fullfile(mpath, 'mother_rebuild.mph');
-
 mphsave(model, mphfile);
-mphopen(mphfile);   % 在GUI里打开

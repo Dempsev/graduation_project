@@ -25,11 +25,19 @@ end
 
 % Derived values: eigenfrequency + participation factors
 try
+    model.result.table('tbl1').clearTableData;
     model.result.numerical.create('gev1', 'EvalGlobal');
     model.result.numerical('gev1').set('data', 'dset2');
     model.result.numerical('gev1').set('table', 'tbl1');
-    model.result.numerical('gev1').set('expr', 'solid.freq');
+    model.result.numerical('gev1').set('expr', 'freq');
     model.result.numerical('gev1').set('unit', 'Hz');
+    model.result.numerical('gev1').set('tablecols', 'data');
+    model.result.numerical('gev1').set('looplevelinput', {'all' 'all'});
+    try
+        model.result.numerical('gev1').set('storetable', 'on');
+    catch
+    end
+    model.result.numerical('gev1').setResult;
 catch
 end
 try
@@ -37,6 +45,9 @@ try
     model.result.numerical('gev2').set('data', 'dset2');
     model.result.numerical('gev2').set('table', 'tbl2');
     model.result.numerical('gev2').set('expr', {'mpf1.pfLnormX' 'mpf1.pfLnormY' 'mpf1.pfLnormZ'});
+    model.result.numerical('gev2').set('tablecols', 'outer');
+    model.result.numerical('gev2').set('looplevelinput', {'all' 'all'});
+    model.result.numerical('gev2').setResult;
 catch
 end
 
@@ -77,6 +88,15 @@ try
     model.result('pg2').label('Band diagram');
     model.result('pg2').create('glob1', 'Global');
     model.result('pg2').feature('glob1').set('expr', 'solid.freq');
+catch
+end
+
+% Export table 1 to CSV
+try
+    model.result.export.create('tbl1csv', 'Table');
+    model.result.export('tbl1csv').set('table', 'tbl1');
+    model.result.export('tbl1csv').set('filename', fullfile(char(model.modelPath()), 'tbl1.csv'));
+    model.result.export('tbl1csv').run;
 catch
 end
 end

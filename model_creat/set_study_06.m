@@ -32,7 +32,7 @@ try
 catch
 end
 
-% Solver configuration
+% Solver configuration (auto sequences may reset sol tags)
 try
     model.study('std1').createAutoSequences('all');
 catch
@@ -41,18 +41,21 @@ try
     model.study('std1').showAutoSequences('all');
 catch
 end
+% Ensure sol1 exists
 try
-    model.sol.create('sol1');
-    model.sol('sol1').study('std1');
+    model.sol('sol1');
 catch
+    model.sol.create('sol1');
 end
+model.sol('sol1').study('std1');
 
 % Parametric solution (for plotting)
 try
-    model.sol.create('sol2');
-    model.sol('sol2').study('std1');
+    model.sol('sol2');
 catch
+    model.sol.create('sol2');
 end
+model.sol('sol2').study('std1');
 
 % Job configuration (batch)
 try
@@ -101,6 +104,13 @@ try
     model.batch('p2').set('punit', {'', ''});
     model.batch('p2').set('sweeptype', 'filled');
     model.batch('p2').set('err', true);
+catch
+end
+try
+    model.batch('p2').feature('so1').set('seq', 'sol1');
+    model.batch('p2').feature('so1').set('store', true);
+    model.batch('p2').feature('so1').set('psol', 'sol2');
+    model.batch('p2').feature('so1').set('keeprom', true);
 catch
 end
 end
