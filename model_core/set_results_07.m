@@ -47,6 +47,10 @@ try
     model.result.numerical('gev2').set('expr', {'mpf1.pfLnormX' 'mpf1.pfLnormY' 'mpf1.pfLnormZ'});
     model.result.numerical('gev2').set('tablecols', 'outer');
     model.result.numerical('gev2').set('looplevelinput', {'all' 'all'});
+    try
+        model.result.numerical('gev2').set('storetable', 'on');
+    catch
+    end
     model.result.numerical('gev2').setResult;
 catch
 end
@@ -93,9 +97,21 @@ end
 
 % Export table 1 to CSV
 try
+    % Re-evaluate to ensure table data exists before export
+    try
+        model.result.numerical('gev1').setResult;
+    catch
+    end
+    % Create export folder if needed
+    export_dir = fullfile(char(model.modelPath()), 'tbl1_exports');
+    try
+        java.io.File(export_dir).mkdirs();
+    catch
+    end
     model.result.export.create('tbl1csv', 'Table');
     model.result.export('tbl1csv').set('table', 'tbl1');
-    model.result.export('tbl1csv').set('filename', fullfile(char(model.modelPath()), 'tbl1.csv'));
+    ts = datestr(now, 'yyyymmdd_HHMMSSFFF');
+    model.result.export('tbl1csv').set('filename', fullfile(export_dir, ['tbl1_' ts '.csv']));
     model.result.export('tbl1csv').run;
 catch
 end

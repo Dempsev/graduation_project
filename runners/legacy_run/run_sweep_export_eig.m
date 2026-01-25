@@ -1,3 +1,4 @@
+% LEGACY: retained for reference; not part of current runner workflow.
 %% run_sweep_export_eig.m
 clear; clc;
 
@@ -6,7 +7,12 @@ clear; clc;
 
 tAll = tic;
 
-model = mphload("D:\graduation_project\model\amp.mph");
+thisDir = fileparts(mfilename('fullpath'));
+rootDir = fileparts(fileparts(thisDir));
+dataDir = fullfile(rootDir, "data");
+if ~exist(dataDir, "dir"); mkdir(dataDir); end
+
+model = mphload(fullfile(dataDir, "amp.mph"));
 
 % ===== 1) 设置参数化扫描列表（改 study->param）=====
 stdTag   = "std1";
@@ -54,7 +60,7 @@ model.result.numerical("gev1").run;   % 如果你的 tag 不是 eig，看下面�
 
 
 % ===== 3) 导出特征频率表（只导 CSV）=====
-outDir = "D:\graduation_project\post";
+outDir = fullfile(dataDir, "post");
 if ~exist(outDir, 'dir'); mkdir(outDir); end
 
 tblTag = "tbl2"; % 需要的话换 tbl1

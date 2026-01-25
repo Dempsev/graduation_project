@@ -1,3 +1,4 @@
+% LEGACY: retained for reference; not part of current runner workflow.
 %% run_sweep_export_eig_fix.m
 clear; clc;
 
@@ -6,7 +7,12 @@ clear; clc;
 
 tAll = tic;
 
-model = mphload("D:\graduation_project\model\amp.mph");
+thisDir = fileparts(mfilename('fullpath'));
+rootDir = fileparts(fileparts(thisDir));
+dataDir = fullfile(rootDir, "data");
+if ~exist(dataDir, "dir"); mkdir(dataDir); end
+
+model = mphload(fullfile(dataDir, "amp.mph"));
 
 % ===== 1) 改参数化扫描（study->param）=====
 stdTag   = "std1";
@@ -104,7 +110,7 @@ gev.run;
 fprintf("Derived values updated. time = %.1f s\n", toc(tG));
 
 % ===== 5) 导出 tbl2 =====
-outDir = "D:\graduation_project\post";
+outDir = fullfile(dataDir, "post");
 if ~exist(outDir, 'dir'); mkdir(outDir); end
 
 stamp = string(datetime('now','Format','yyyyMMdd_HHmmss'));

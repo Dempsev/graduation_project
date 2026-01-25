@@ -1,14 +1,20 @@
 import com.comsol.model.*
 import com.comsol.model.util.*
 
+thisDir = fileparts(mfilename('fullpath'));
+rootDir = fileparts(thisDir);
+addpath(genpath(fullfile(rootDir, 'model_core')));
+dataDir = fullfile(rootDir, 'data');
+if ~exist(dataDir, 'dir'); mkdir(dataDir); end
+
 ModelUtil.clear;
 ModelUtil.showProgress(true);
 
 % ========= 路径（建议用可写�?work 副本�?========
-mph_src = "D:\\graduation_project\\model\\mother.mph";
-out_dir = "D:\graduation_project\batch_out\";
+mph_src = fullfile(dataDir, "mother.mph");
+out_dir = fullfile(dataDir, "batch_out");
 if ~exist(out_dir,'dir'); mkdir(out_dir); end
-mph_in = out_dir + "mother_work.mph";
+mph_in = fullfile(out_dir, "mother_work.mph");
 if ~exist(mph_in, 'file'); copyfile(mph_src, mph_in); end
 
 model = mphload(mph_in);
@@ -72,7 +78,7 @@ model.result.numerical(tmpGev).set("table", tmpTbl);
 
 model.result.numerical(tmpGev).run;
 T = mphtable(model, tmpTbl);
-csv_name = out_dir + "band_k_a1.csv";
+csv_name = fullfile(out_dir, "band_k_a1.csv");
 
 if isempty(T) || ~isfield(T,"data") || isempty(T.data)
     warning("table is still empty. Check expression and dataset binding.");
@@ -84,6 +90,6 @@ end
 fprintf("Saved: %s  (rows=%d, cols=%d)\n", csv_name, size(T.data,1), size(T.data,2));
 
 % Optional: save a temp model for inspection
-mphsave(model, out_dir + "tmp.mph");
+mphsave(model, fullfile(out_dir, "tmp.mph"));
 
 disp("Batch finished.");

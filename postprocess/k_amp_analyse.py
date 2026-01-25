@@ -4,7 +4,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 
 # ========== 1) 读入 ==========
-CSV_PATH = "k_amp.csv"   # <- 改成你的路径/文件名
+CSV_PATH = "D:\\graduation_project\\model\\tbl1_exports\\tbl1_20260125_204217874.csv"   # <- 改成你的路径/文件名
 OUT_DIR = "post_out"
 
 os.makedirs(OUT_DIR, exist_ok=True)

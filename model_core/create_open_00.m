@@ -1,13 +1,22 @@
 import com.comsol.model.*
 import com.comsol.model.util.*
 
+% Ensure this folder is on the path so dependencies resolve from any CWD.
+thisDir = fileparts(mfilename('fullpath'));
+if ~isempty(thisDir)
+    addpath(thisDir);
+end
+rootDir = fileparts(thisDir);
+dataDir = fullfile(rootDir, 'data');
+if ~exist(dataDir, 'dir'); mkdir(dataDir); end
+
 ModelUtil.clear;
 ModelUtil.showProgress(true);
 
 model = ModelUtil.create('Model');
 
 % Model path and label
-model.modelPath('D:/graduation_project/model');
+model.modelPath(dataDir);
 model.label('mother_rebuild');
 
 % Parameters

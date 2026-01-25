@@ -1,10 +1,16 @@
+% LEGACY: retained for reference; not part of current runner workflow.
 function run_sweep_export_eig_v2()
     clc; clear;
 
     tAll = tic;
 
     % ====== 0) 基本配置 ======
-    mphFile = "D:\graduation_project\model\amp.mph";
+    thisDir = fileparts(mfilename('fullpath'));
+    rootDir = fileparts(fileparts(thisDir));
+    dataDir = fullfile(rootDir, "data");
+    if ~exist(dataDir, "dir"); mkdir(dataDir); end
+
+    mphFile = fullfile(dataDir, "amp.mph");
 
     stdTag   = "std1";      % 研究 tag（和中文界面“研究1”无关，tag 一般仍是 std1）
     paramTag = "param";     % 参数化扫描节点 tag（通常叫 param）
@@ -15,7 +21,7 @@ function run_sweep_export_eig_v2()
     k_list   = "range(0, 3/(N-1), 3)";
     amp_list = "range(0.15, 0.05, 0.55)";
 
-    outDir = "D:\graduation_project\post";
+    outDir = fullfile(dataDir, "post");
     if ~exist(outDir, "dir"); mkdir(outDir); end
 
     % 用时间戳防止“旧文件覆盖/没刷新”
