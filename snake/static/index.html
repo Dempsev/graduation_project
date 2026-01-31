@@ -1,0 +1,276 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>强化学习贪吃蛇</title>
+    <style>
+      body {
+        font-family: system-ui, sans-serif;
+        margin: 20px;
+        background: #ffffff; /* 强制浅色背景，避免黑底黑字 */
+        color: #222222;      /* 高对比文字颜色 */
+      }
+      #panel { margin-bottom: 12px; display: flex; gap: 8px; align-items: center; }
+      canvas { border: 1px solid #ccc; }
+      #board, #chart { background: #ffffff; } /* 画布也使用浅色背景 */
+      .stat { margin-left: 8px; }
+      button { padding: 6px 10px; }
+      input { width: 80px; }
+    </style>
+  </head>
+  <body>
+    <h2>强化学习贪吃蛇（RL Snake）</h2>
+    <div id="panel">
+      <button id="startBtn">开始训练</button>
+      <button id="stopBtn">停止训练</button>
+      <label>界面大小 n：<input id="nInput" type="number" min="5" value="32" /></label>
+      <button id="applyBtn">应用</button>
+      <label style="margin-left:8px;">智能体：
+        <select id="agentSelect">
+          <option value="q">Q-learning</option>
+          <option value="dqn">DQN</option>
+        </select>
+      </label>
+      <button id="applyAgent">应用智能体</button>
+      <label style="margin-left:8px;">检查点：
+        <select id="ckptSelect" style="min-width:220px"></select>
+      </label>
+      <button id="refreshCkpt">刷新</button>
+      <button id="loadCkpt">加载</button>
+      <span class="stat">回合：<span id="episode">0</span></span>
+      <span class="stat">长度：<span id="length">0</span></span>
+      <span class="stat">得分：<span id="score">0</span></span>
+      <span class="stat">ε：<span id="epsilon">0</span></span>
+      <span class="stat">智能体：<span id="agentType">q</span></span>
+      <span class="stat">记录计数：<span id="recordStats">—</span></span>
+    </div>
+    <div style="display:flex; gap:16px; align-items:flex-start;">
+      <canvas id="board" width="420" height="420"></canvas>
+      <div style="flex:1;">
+        <div style="display:flex; align-items:center; gap:8px;">
+          <h4 style="margin:0;">每轮长度曲线</h4>
+          <label style="font-size:12px;">显示最后
+            <input id="limitInput" type="number" min="50" value="200" style="width:80px;"> 轮
+          </label>
+        </div>
+        <canvas id="chart" width="420" height="220"></canvas>
+        <div>
+          <h4 style="margin:10px 0 6px;">历史最长 Top3 的最后帧</h4>
+          <div style="display:flex; gap:8px;">
+            <div><div id="t1label" style="font-size:12px;">—</div><canvas id="t1" width="130" height="130"></canvas></div>
+            <div><div id="t2label" style="font-size:12px;">—</div><canvas id="t2" width="130" height="130"></canvas></div>
+            <div><div id="t3label" style="font-size:12px;">—</div><canvas id="t3" width="130" height="130"></canvas></div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script>
+      const cvs = document.getElementById('board');
+      const ctx = cvs.getContext('2d');
+      const startBtn = document.getElementById('startBtn');
+      const stopBtn = document.getElementById('stopBtn');
+      const applyBtn = document.getElementById('applyBtn');
+      const nInput = document.getElementById('nInput');
+      const ckptSelect = document.getElementById('ckptSelect');
+      const refreshCkpt = document.getElementById('refreshCkpt');
+      const loadCkpt = document.getElementById('loadCkpt');
+      const agentSelect = document.getElementById('agentSelect');
+      const applyAgent = document.getElementById('applyAgent');
+      const epsEl = document.getElementById('epsilon');
+      const epEl = document.getElementById('episode');
+      const lenEl = document.getElementById('length');
+      const scoreEl = document.getElementById('score');
+      const agentTypeEl = document.getElementById('agentType');
+      const recordStatsEl = document.getElementById('recordStats');
+
+      startBtn.onclick = async () => {
+        await fetch('/train/start', { method: 'POST' });
+      };
+      stopBtn.onclick = async () => {
+        const res = await fetch('/train/stop', { method: 'POST' });
+        const data = await res.json();
+        if (data.file) {
+          // 自动刷新一次列表
+          await loadCheckpoints();
+        }
+      };
+      applyBtn.onclick = async () => {
+        const n = Number(nInput.value);
+        await fetch('/config', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ n })
+        });
+      };
+
+      applyAgent.onclick = async () => {
+        const type = agentSelect.value;
+        const res = await fetch('/agent/set', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ type })
+        });
+        try {
+          const data = await res.json();
+          if (data.agent_type) agentTypeEl.textContent = data.agent_type;
+        } catch (e) {}
+      };
+
+      function draw(state) {
+        const n = state.n;
+        const cell = Math.floor(Math.min(cvs.width, cvs.height) / n);
+        ctx.clearRect(0, 0, cvs.width, cvs.height);
+        ctx.fillStyle = '#f8f8f8';
+        ctx.fillRect(0, 0, cvs.width, cvs.height);
+
+        // 网格线（淡灰色）
+        ctx.strokeStyle = '#eee';
+        for (let i = 0; i <= n; i++) {
+          ctx.beginPath(); ctx.moveTo(i*cell, 0); ctx.lineTo(i*cell, n*cell); ctx.stroke();
+          ctx.beginPath(); ctx.moveTo(0, i*cell); ctx.lineTo(n*cell, i*cell); ctx.stroke();
+        }
+
+        // 画蛇
+        ctx.fillStyle = '#28a745';
+        for (const [x, y] of state.snake) {
+          ctx.fillRect(x * cell + 1, y * cell + 1, cell - 2, cell - 2);
+        }
+
+        // 画食物
+        if (state.food) {
+          const [fx, fy] = state.food;
+          ctx.fillStyle = '#dc3545';
+          ctx.fillRect(fx * cell + 1, fy * cell + 1, cell - 2, cell - 2);
+        }
+
+        // 统计信息
+        epEl.textContent = state.episode ?? 0;
+        lenEl.textContent = state.snake ? state.snake.length : 0;
+        scoreEl.textContent = state.score ?? 0;
+        epsEl.textContent = (state.epsilon ?? 0).toFixed(3);
+        if (state.agent_type) {
+          agentTypeEl.textContent = state.agent_type;
+          // 同步选择框但不触发切换
+          try { agentSelect.value = state.agent_type; } catch (e) {}
+        }
+        // 记录计数展示：按长度升序 "L:count/target | ..."；空时显示 0/target
+        if (state.record_counts && state.record_targets) {
+          try {
+            const lengths = Object.keys(state.record_targets).map(Number).sort((a,b)=>a-b);
+            const parts = lengths.map(L => {
+              const c = Number(state.record_counts[L] || 0);
+              const t = Number(state.record_targets[L] || 0);
+              return `${L}:${c}/${t}`;
+            });
+            recordStatsEl.textContent = parts.length ? parts.join(' | ') : '—';
+          } catch (e) {}
+        }
+      }
+
+      // 曲线图初始化
+      const chartCtx = document.getElementById('chart').getContext('2d');
+      const lengthChart = new Chart(chartCtx, {
+        type: 'line',
+        data: { labels: [], datasets: [{ label: '长度', data: [], borderColor: '#007bff', backgroundColor: 'rgba(0,123,255,0.1)', tension: 0.2 }] },
+        options: { responsive: false, animation: false, scales: { x: { title: { display: true, text: '回合' } }, y: { title: { display: true, text: '长度' }, beginAtZero: true } } }
+      });
+
+      let lastEpisode = 0;
+      let limitPoints = 0; // 0 表示后端返回全部
+      const limitInput = document.getElementById('limitInput');
+      limitInput.onchange = () => {
+        // 这里用于控制图表刻度密度，而不是截断数据
+        const desiredTicks = Number(limitInput.value) || 200;
+        lengthChart.options.scales.x.ticks.maxTicksLimit = Math.max(10, Math.min(50, desiredTicks));
+      };
+
+      async function tick() {
+        try {
+          const res = await fetch('/state?limit=' + (limitPoints || 0));
+          const state = await res.json();
+          draw(state);
+
+          // 更新曲线（仅在新回合时刷新，减轻负载）
+          const ep = state.episode || 0;
+          if (ep !== lastEpisode) {
+            const lengths = state.lengths || [];
+            const labels = Array.from({ length: lengths.length }, (_, i) => i + 1);
+            lengthChart.data.labels = labels;
+            lengthChart.data.datasets[0].data = lengths;
+            // 动态调整刻度密度：最多显示N个刻度
+            lengthChart.options.scales.x.ticks.maxTicksLimit = lengthChart.options.scales.x.ticks.maxTicksLimit || 20;
+            lengthChart.update();
+            lastEpisode = ep;
+          }
+          // 更新Top3预览
+          try {
+            const tRes = await fetch('/top3');
+            const { top3 } = await tRes.json();
+            const canvases = [document.getElementById('t1'), document.getElementById('t2'), document.getElementById('t3')];
+            const labels = [document.getElementById('t1label'), document.getElementById('t2label'), document.getElementById('t3label')];
+            for (let i = 0; i < 3; i++) {
+              const c = canvases[i];
+              const l = labels[i];
+              const ctx2 = c.getContext('2d');
+              ctx2.clearRect(0,0,c.width,c.height);
+              if (top3 && top3[i]) {
+                const st = top3[i].state;
+                l.textContent = `回合${top3[i].episode} 长度${top3[i].length}`;
+                const n = st.n;
+                const cell = Math.floor(Math.min(c.width, c.height) / n);
+                // 背景
+                ctx2.fillStyle = '#f8f8f8';
+                ctx2.fillRect(0,0,c.width,c.height);
+                // 蛇
+                ctx2.fillStyle = '#28a745';
+                for (const [x, y] of st.snake) {
+                  ctx2.fillRect(x * cell + 1, y * cell + 1, cell - 2, cell - 2);
+                }
+                // 食物
+                if (st.food) {
+                  const [fx, fy] = st.food;
+                  ctx2.fillStyle = '#dc3545';
+                  ctx2.fillRect(fx * cell + 1, fy * cell + 1, cell - 2, cell - 2);
+                }
+              } else {
+                l.textContent = '—';
+              }
+            }
+          } catch (e) {}
+        } catch (e) {
+          // 忽略网络错误
+        }
+        requestAnimationFrame(tick);
+      }
+      tick();
+
+      // 检查点列表加载与操作（修复了脚本位置导致函数未生效的问题）
+      async function loadCheckpoints() {
+        try {
+          const res = await fetch('/checkpoints');
+          const { files } = await res.json();
+          ckptSelect.innerHTML = '';
+          for (const f of files) {
+            const opt = document.createElement('option');
+            const dt = new Date(f.mtime * 1000);
+            opt.value = f.name;
+            opt.textContent = `${f.name} (${dt.toLocaleString()})`;
+            ckptSelect.appendChild(opt);
+          }
+        } catch (e) {}
+      }
+      refreshCkpt.onclick = loadCheckpoints;
+      loadCkpt.onclick = async () => {
+        const filename = ckptSelect.value;
+        if (!filename) return;
+        await fetch('/train/load', {
+          method: 'POST', headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ filename })
+        });
+      };
+      // 初始化拉取一次
+      loadCheckpoints();
+    </script>
+  </body>
+  </html>

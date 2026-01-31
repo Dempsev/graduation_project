@@ -19,11 +19,21 @@ model = ModelUtil.create('Model');
 model.modelPath(dataDir);
 model.label('mother_rebuild');
 
+% Toggle: only build geometry (skip physics/mesh/study/results)
+only_geom = true;
+
 % Parameters
 model = set_params_01(model);
 
 % Geometry
 model = build_geom_02(model);
+
+if only_geom
+    mpath = char(model.modelPath());
+    mphfile = fullfile(mpath, 'mother_rebuild.mph');
+    mphsave(model, mphfile);
+    return;
+end
 
 % Materials
 model = set_material_03(model);

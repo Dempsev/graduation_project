@@ -8,9 +8,10 @@ import io_utils
 import contour
 import simplify
 import viz
+from paths import SNAKE_STATES_DIR, SHAPE_POINTS_DIR, SHAPE_PREVIEWS_DIR
 
 
-TXT_DIR = r"D:\graduation_project\discrete_database\states"
+TXT_DIR = SNAKE_STATES_DIR
 
 
 def parse_int_bool(value: str) -> bool:
@@ -22,60 +23,100 @@ def parse_int_bool(value: str) -> bool:
     raise argparse.ArgumentTypeError("Expected 0/1 or true/false.")
 
 
+def _as_bool(value):
+    if isinstance(value, bool):
+        return value
+    if isinstance(value, (int, float)):
+        return value != 0
+    if isinstance(value, str):
+        v = value.strip().lower()
+        if v in {"1", "true", "yes", "y"}:
+            return True
+        if v in {"0", "false", "no", "n"}:
+            return False
+    return None
+
+
 def process_one(path: str, cfg: dict) -> dict:
     base_name = os.path.splitext(os.path.basename(path))[0]
     out_csv, out_png = io_utils.output_paths(base_name, cfg["csv_dir"], cfg["png_dir"])
 
     A = io_utils.load_binary_txt(path)
-    if cfg["largest_component"]:
+    meta = io_utils.load_meta_for_txt(path)
+    cfg_eff = dict(cfg)
+    if meta:
+        a = meta.get("a")
+        n = meta.get("n")
+        try:
+            a_val = float(a)
+            n_val = float(n)
+            if a_val > 0 and n_val > 0:
+                cfg_eff["pixel_size"] = a_val / n_val
+        except Exception:
+            pass
+        co = _as_bool(meta.get("center_origin"))
+        if co is not None:
+            cfg_eff["center_origin"] = co
+    if meta:
+        print(
+            f"[meta] {base_name}: pixel_size={cfg_eff['pixel_size']:.6g}, "
+            f"center_origin={cfg_eff['center_origin']}"
+        )
+    else:
+        print(
+            f"[meta] {base_name}: meta not found, "
+            f"pixel_size={cfg_eff['pixel_size']:.6g}, "
+            f"center_origin={cfg_eff['center_origin']}"
+        )
+    if cfg_eff["largest_component"]:
         A = contour.largest_component(A)
 
-    contours = contour.find_contours_padded(A, level=cfg["level"], pad=cfg["pad"])
+    contours = contour.find_contours_padded(A, level=cfg_eff["level"], pad=cfg_eff["pad"])
     main = contour.choose_main_contour(
         contours,
-        max_gap=cfg["close_gap_px"],
-        min_points=cfg["min_points"],
-        prefer_closed=cfg["prefer_closed"],
+        max_gap=cfg_eff["close_gap_px"],
+        min_points=cfg_eff["min_points"],
+        prefer_closed=cfg_eff["prefer_closed"],
     )
     if main is None:
         raise RuntimeError("No valid contour found.")
 
     raw_rc = main
     approx_rc = raw_rc
-    if cfg["simplify"]:
-        approx_rc = simplify.approximate(raw_rc, cfg["approx_tol"])
+    if cfg_eff["simplify"]:
+        approx_rc = simplify.approximate(raw_rc, cfg_eff["approx_tol"])
 
-    xy = contour.contour_to_xy(approx_rc, A.shape, cfg["pixel_size"], cfg["center_origin"])
-    close_gap_xy = cfg["close_gap_px"] * cfg["pixel_size"]
+    xy = contour.contour_to_xy(approx_rc, A.shape, cfg_eff["pixel_size"], cfg_eff["center_origin"])
+    close_gap_xy = cfg_eff["close_gap_px"] * cfg_eff["pixel_size"]
     close_ok = np.linalg.norm(xy[0] - xy[-1]) <= close_gap_xy if len(xy) > 1 else True
-    if cfg["require_closed"] and not close_ok:
+    if cfg_eff["require_closed"] and not close_ok:
         raise RuntimeError("Open contour detected; adjust padding/selection or close-gap.")
 
-    if cfg["enable_postprocess"]:
-        xy = simplify.postprocess(xy, cfg["n_dense"], close_ok, close_gap_xy)
+    if cfg_eff["enable_postprocess"]:
+        xy = simplify.postprocess(xy, cfg_eff["n_dense"], close_ok, close_gap_xy)
 
-    if cfg["require_closed"]:
+    if cfg_eff["require_closed"]:
         xy = simplify.ensure_closed(xy, close_gap_xy)
 
     io_utils.save_csv_xy(out_csv, xy)
 
-    post_rc = contour.xy_to_rc(xy, A.shape, cfg["pixel_size"], cfg["center_origin"])
+    post_rc = contour.xy_to_rc(xy, A.shape, cfg_eff["pixel_size"], cfg_eff["center_origin"])
     area = abs(contour.polygon_area(post_rc[:, [1, 0]]))
     title = (
         f"raw:{len(raw_rc)} approx:{len(approx_rc)} post:{len(xy)} "
         f"area:{area:.2f} closed:{np.allclose(xy[0], xy[-1])} "
-        f"prefer_closed:{cfg['prefer_closed']}"
+        f"prefer_closed:{cfg_eff['prefer_closed']}"
     )
 
-    if cfg["preview"]:
+    if cfg_eff["preview"]:
         viz.plot_preview(
             A=A,
-            raw_rc=raw_rc if cfg["preview_show_original"] else None,
-            approx_rc=approx_rc if cfg["preview_show_original"] else None,
-            post_rc=post_rc if cfg["enable_postprocess"] else None,
+            raw_rc=raw_rc if cfg_eff["preview_show_original"] else None,
+            approx_rc=approx_rc if cfg_eff["preview_show_original"] else None,
+            post_rc=post_rc if cfg_eff["enable_postprocess"] else None,
             out_png=out_png,
             title=title,
-            show_legend=cfg["preview_show_original"] or cfg["enable_postprocess"],
+            show_legend=cfg_eff["preview_show_original"] or cfg_eff["enable_postprocess"],
         )
 
     return {
@@ -87,6 +128,9 @@ def process_one(path: str, cfg: dict) -> dict:
         "closed": np.allclose(xy[0], xy[-1]),
         "out_csv": out_csv,
         "out_png": out_png,
+        "pixel_size": cfg_eff["pixel_size"],
+        "center_origin": cfg_eff["center_origin"],
+        "meta_used": bool(meta),
     }
 
 
@@ -118,9 +162,8 @@ def main():
 
     args = parser.parse_args()
 
-    this_dir, root_dir, data_dir = io_utils.get_repo_dirs(__file__)
-    csv_dir = os.path.join(data_dir, "shape_points")
-    png_dir = os.path.join(data_dir, "shape_previews")
+    csv_dir = SHAPE_POINTS_DIR
+    png_dir = SHAPE_PREVIEWS_DIR
     io_utils.ensure_dirs(csv_dir, png_dir)
 
     cfg = {

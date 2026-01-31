@@ -1,4 +1,5 @@
 # -*- coding: utf-8 -*-
+import json
 import os
 import numpy as np
 
@@ -34,3 +35,17 @@ def output_paths(base_name: str, csv_dir: str, png_dir: str) -> tuple[str, str]:
 
 def save_csv_xy(path: str, xy: np.ndarray) -> None:
     np.savetxt(path, xy, delimiter=",", header="x,y", comments="", fmt="%.8g")
+
+
+def load_meta_for_txt(path: str) -> dict:
+    """Load sidecar meta json for a txt file, if present."""
+    base, _ = os.path.splitext(path)
+    meta_path = f"{base}.meta.json"
+    if not os.path.isfile(meta_path):
+        return {}
+    try:
+        with open(meta_path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+        return data if isinstance(data, dict) else {}
+    except Exception:
+        return {}
