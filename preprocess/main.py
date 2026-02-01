@@ -37,11 +37,14 @@ def _as_bool(value):
     return None
 
 
-def process_one(path: str, cfg: dict) -> dict:
+def process_one(path: str, cfg: dict) -> tuple[dict | None, str | None]:
     base_name = os.path.splitext(os.path.basename(path))[0]
     out_csv, out_png = io_utils.output_paths(base_name, cfg["csv_dir"], cfg["png_dir"])
 
     A = io_utils.load_binary_txt(path)
+    if A.max() <= 0.5:
+        print(f"[skip] {base_name}: empty matrix")
+        return None, "empty"
     meta = io_utils.load_meta_for_txt(path)
     cfg_eff = dict(cfg)
     if meta:
@@ -71,7 +74,10 @@ def process_one(path: str, cfg: dict) -> dict:
     if cfg_eff["largest_component"]:
         A = contour.largest_component(A)
 
-    contours = contour.find_contours_padded(A, level=cfg_eff["level"], pad=cfg_eff["pad"])
+    if cfg_eff["contour_method"] == "pixel":
+        contours = contour.find_pixel_boundaries(A)
+    else:
+        contours = contour.find_contours_padded(A, level=cfg_eff["level"], pad=cfg_eff["pad"])
     main = contour.choose_main_contour(
         contours,
         max_gap=cfg_eff["close_gap_px"],
@@ -79,7 +85,8 @@ def process_one(path: str, cfg: dict) -> dict:
         prefer_closed=cfg_eff["prefer_closed"],
     )
     if main is None:
-        raise RuntimeError("No valid contour found.")
+        print(f"[skip] {base_name}: no valid contour found")
+        return None, "no_contour"
 
     raw_rc = main
     approx_rc = raw_rc
@@ -131,7 +138,7 @@ def process_one(path: str, cfg: dict) -> dict:
         "pixel_size": cfg_eff["pixel_size"],
         "center_origin": cfg_eff["center_origin"],
         "meta_used": bool(meta),
-    }
+    }, None
 
 
 def main():
@@ -143,9 +150,9 @@ def main():
 
     parser.add_argument("--pixel-size", type=float, default=1.0, help="Pixel size in physical units.")
     parser.add_argument("--center-origin", type=parse_int_bool, default=True, help="1: origin at center.")
-    parser.add_argument("--simplify", type=parse_int_bool, default=True, help="Enable approximation.")
+    parser.add_argument("--simplify", type=parse_int_bool, default=False, help="Enable approximation.")
     parser.add_argument("--approx-tol", type=float, default=0.2, help="approximate_polygon tolerance.")
-    parser.add_argument("--enable-postprocess", type=parse_int_bool, default=True, help="Enable postprocess.")
+    parser.add_argument("--enable-postprocess", type=parse_int_bool, default=False, help="Enable postprocess.")
     parser.add_argument("--n-dense", type=int, default=10, help="Insert N points per segment.")
     parser.add_argument("--close-gap", type=float, default=1.5, help="Max gap in pixels to close.")
     parser.add_argument("--min-points", type=int, default=10, help="Min points for a contour candidate.")
@@ -153,6 +160,12 @@ def main():
     parser.add_argument("--largest-component", type=parse_int_bool, default=False, help="Keep largest component.")
     parser.add_argument("--pad", type=int, default=1, help="Padding size before find_contours.")
     parser.add_argument("--level", type=float, default=0.5, help="find_contours level.")
+    parser.add_argument(
+        "--contour-method",
+        default="pixel",
+        choices=["pixel", "marching"],
+        help="pixel: pixel-block boundary; marching: skimage find_contours.",
+    )
     parser.add_argument("--require-closed", type=parse_int_bool, default=True, help="Require closed output.")
     parser.add_argument("--preview", type=parse_int_bool, default=True, help="Save preview image.")
     parser.add_argument("--preview-show-original", type=parse_int_bool, default=True, help="Show raw/approx.")
@@ -181,6 +194,7 @@ def main():
         "largest_component": args.largest_component,
         "pad": args.pad,
         "level": args.level,
+        "contour_method": args.contour_method,
         "require_closed": args.require_closed,
         "preview": args.preview,
         "preview_show_original": args.preview_show_original,
@@ -213,7 +227,9 @@ def main():
         rng = random.Random(args.seed)
         picks = rng.sample(paths, min(args.selftest_n, len(paths)))
         for p in picks:
-            info = process_one(p, cfg)
+            info, reason = process_one(p, cfg)
+            if info is None:
+                continue
             print(
                 f"[selftest] {info['name']} raw:{info['raw']} approx:{info['approx']} "
                 f"post:{info['post']} area:{info['area']:.2f} closed:{info['closed']}"
@@ -223,12 +239,31 @@ def main():
     if not paths:
         raise RuntimeError("No txt files found to process.")
 
-    print(f"Processing {len(paths)} file(s).")
+    total = len(paths)
+    skipped_empty = 0
+    skipped_no_contour = 0
+    processed = 0
+
+    print(f"Processing {total} file(s).")
     for path in paths:
-        info = process_one(path, cfg)
+        info, reason = process_one(path, cfg)
+        if info is None:
+            if reason == "empty":
+                skipped_empty += 1
+            elif reason == "no_contour":
+                skipped_no_contour += 1
+            continue
+        processed += 1
         print(
             f"Done: {info['name']} raw:{info['raw']} approx:{info['approx']} "
             f"post:{info['post']} area:{info['area']:.2f} closed:{info['closed']}"
+        )
+    if total > 0:
+        empty_ratio = skipped_empty / total
+        print(
+            f"[stats] total:{total} processed:{processed} "
+            f"skip_empty:{skipped_empty} ({empty_ratio:.2%}) "
+            f"skip_no_contour:{skipped_no_contour}"
         )
 
 

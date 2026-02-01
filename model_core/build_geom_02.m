@@ -57,11 +57,11 @@ catch
 end
 
 % Optional discrete perturbation (from preprocess CSV)
-csvPath = get_shape_file('D:\graduation_project\coad\data\shape_points\ep1751_step21_contour_xy.csv');
+shapeDir = fullfile('data', 'shape_points');
+csvPath = get_shape_file(shapeDir);
 tagPrefix = 'dp1';
-perturb_scale = 1.0; % extra scale multiplier after auto-fit
-perturb_dx = 0.0; % extra offset after auto-center
-perturb_dy = 0.0; % extra offset after auto-center
+perturb_dx = 0.0; % optional offset in x
+perturb_dy = 0.0; % optional offset in y
 perturb_mode = get_perturb_mode(); % 'union' or 'difference'
 
 baseSolidTag = 'csol1';
@@ -69,7 +69,7 @@ dpOk = false;
 dpSolidTag = '';
 try
     [model, dpSolidTag, dpOk] = add_discrete_perturbation( ...
-        model, csvPath, tagPrefix, perturb_scale, perturb_dx, perturb_dy);
+        model, csvPath, tagPrefix, perturb_dx, perturb_dy);
 catch ME
     warning('build_geom_02:DiscretePerturbation', 'Discrete perturbation skipped: %s', ME.message);
 end
@@ -78,6 +78,14 @@ end
 if dpOk
     model.component('comp1').geom('geom1').create('uni1', 'Union');
     model.component('comp1').geom('geom1').feature('uni1').selection('input').set({baseSolidTag, dpSolidTag});
+    try
+        model.component('comp1').geom('geom1').feature('uni1').set('keep', false);
+    catch
+    end
+    try
+        model.component('comp1').geom('geom1').feature('uni1').set('intbnd', false);
+    catch
+    end
     baseSolidTag = 'uni1';
 end
 
@@ -130,7 +138,7 @@ model.component('comp1').geom('geom1').run('fin');
 print_domain_counts(model, 'int1', 'dif1');
 end
 
-function [model, solidTag, ok] = add_discrete_perturbation(model, csvPath, tagPrefix, scale, dx, dy)
+function [model, solidTag, ok] = add_discrete_perturbation(model, csvPath, tagPrefix, dx, dy)
 % Add discrete perturbation from CSV (x,y) as a closed polygon.
 solidTag = '';
 ok = false;
@@ -153,112 +161,13 @@ if norm(xy(1, :) - xy(end, :)) > 1e-9
     xy = [xy; xy(1, :)];
 end
 
-% Compute max radius and auto scale to target radius
-xmin = min(xy(:, 1));
-xmax = max(xy(:, 1));
-ymin = min(xy(:, 2));
-ymax = max(xy(:, 2));
-W = xmax - xmin;
-H = ymax - ymin;
-if W <= 0 || H <= 0
-    warning('Discrete perturbation bbox invalid, skip.');
-    return;
-end
-cx = 0.5 * (xmin + xmax);
-cy = 0.5 * (ymin + ymax);
-
-r = max([max(abs(xy(:, 1))), max(abs(xy(:, 2)))]);
-if ~isfinite(r) || r <= 0
-    warning('Discrete perturbation radius invalid, skip.');
-    return;
-end
-rt = 0.006;
-s_auto = rt / r;
-if ~isfinite(s_auto) || s_auto <= 0
-    warning('Auto scale invalid, skip.');
-    return;
-end
-s = s_auto;
-if nargin >= 4 && ~isempty(scale) && isfinite(scale) && scale > 0
-    s = s_auto * scale; % optional extra multiplier
-end
-
-% Scaled bbox for debug
-xmin_s = xmin * s;
-xmax_s = xmax * s;
-ymin_s = ymin * s;
-ymax_s = ymax * s;
-
-% Random point on Fourier boundary for placement (sampled)
-rng('shuffle');
-params = get_fourier_params(model);
-N = 300;
-t = linspace(0, 2*pi, N + 1);
-t(end) = [];
-[xs, ys] = fourier_point(t, params);
-P = [xs(:), ys(:)];
-
-maxTries = 30;
-curvThresh = 0.7;
-i = 1;
-okPick = false;
-for attempt = 1:maxTries
-    i = randi(N);
-    ip = mod(i - 2, N) + 1;
-    in = mod(i, N) + 1;
-    p_prev = P(ip, :);
-    p = P(i, :);
-    p_next = P(in, :);
-    u1 = p - p_prev;
-    u2 = p_next - p;
-    l1 = hypot(u1(1), u1(2));
-    l2 = hypot(u2(1), u2(2));
-    if l1 <= 0 || l2 <= 0
-        continue;
-    end
-    u1 = u1 / l1;
-    u2 = u2 / l2;
-    curv = 1 - dot(u1, u2);
-    if curv <= curvThresh
-        okPick = true;
-        break;
-    end
-end
-if ~okPick
-    warning('High curvature everywhere, using last pick.');
-end
-
-p_prev = P(mod(i - 2, N) + 1, :);
-p = P(i, :);
-p_next = P(mod(i, N) + 1, :);
-tvec = p_next - p_prev;
-tlen = hypot(tvec(1), tvec(2));
-if tlen <= 0
-    warning('Boundary tangent invalid, skip.');
-    return;
-end
-tvec = tvec / tlen;
-n = [-tvec(2), tvec(1)];
-if dot(n, -p) < 0
-    n = -n; % ensure inward
-end
-delta = 0.0008;
-p_target = p + delta * n;
-
-% Anchor defect center after scaling
-cx_s = cx * s;
-cy_s = cy * s;
-dx0 = p_target(1) - cx_s;
-dy0 = p_target(2) - cy_s;
-if nargin >= 5 && ~isempty(dx) && isfinite(dx)
+[dx0, dy0] = compute_attach_translation(model, xy);
+if nargin >= 4 && ~isempty(dx) && isfinite(dx)
     dx0 = dx0 + dx;
 end
-if nargin >= 6 && ~isempty(dy) && isfinite(dy)
+if nargin >= 5 && ~isempty(dy) && isfinite(dy)
     dy0 = dy0 + dy;
 end
-
-fprintf('[dp1] i=%d, p=(%.6g,%.6g), n=(%.6g,%.6g), dx=%.6g, dy=%.6g, r=%.6g, s=%.6g, bbox_s=[%.6g %.6g %.6g %.6g]\n', ...
-    i, p(1), p(2), n(1), n(2), dx0, dy0, r, s, xmin_s, xmax_s, ymin_s, ymax_s);
 
 geom = model.component('comp1').geom('geom1');
 polyTag = [tagPrefix '_poly'];
@@ -278,26 +187,64 @@ end
 solidTag = [tagPrefix '_csol'];
 geom.create(solidTag, 'ConvertToSolid');
 geom.feature(solidTag).selection('input').set({polyTag});
+if dx0 ~= 0 || dy0 ~= 0
+    movTag = [tagPrefix '_mov'];
+    geom.create(movTag, 'Move');
+    geom.feature(movTag).selection('input').set({solidTag});
+    geom.feature(movTag).set('displ', {num2str(dx0) num2str(dy0)});
+    solidTag = movTag;
+end
+ok = true;
+end
 
-scaTag = [tagPrefix '_sca'];
-geom.create(scaTag, 'Scale');
-geom.feature(scaTag).selection('input').set({solidTag});
-geom.feature(scaTag).set('factor', s);
-try
-    geom.feature(scaTag).set('center', {'0' '0'});
-catch
-    try
-        geom.feature(scaTag).set('pos', {'0' '0'});
-    catch
+function [dx, dy] = compute_attach_translation(model, xy)
+% Compute translation to attach polygon to nearest boundary point.
+dx = 0.0;
+dy = 0.0;
+params = get_fourier_params(model);
+N = 720;
+t = linspace(0, 2*pi, N + 1);
+t(end) = [];
+[bx, by] = fourier_point(t, params);
+P = [bx(:), by(:)];
+if isempty(P)
+    return;
+end
+
+bestD2 = inf;
+bestP = [0, 0];
+bestQ = [0, 0];
+bestIdx = 1;
+for i = 1:size(xy, 1)
+    q = xy(i, :);
+    d2 = (P(:, 1) - q(1)).^2 + (P(:, 2) - q(2)).^2;
+    [m, idx] = min(d2);
+    if m < bestD2
+        bestD2 = m;
+        bestP = P(idx, :);
+        bestQ = q;
+        bestIdx = idx;
     end
 end
 
-movTag = [tagPrefix '_mov'];
-geom.create(movTag, 'Move');
-geom.feature(movTag).selection('input').set({scaTag});
-geom.feature(movTag).set('displ', {num2str(dx0) num2str(dy0)});
-solidTag = movTag;
-ok = true;
+% Add a small inward offset to ensure intersection with boundary.
+eps_in = 2e-4; % meters, tune if needed
+prevIdx = mod(bestIdx - 2, N) + 1;
+nextIdx = mod(bestIdx, N) + 1;
+tvec = P(nextIdx, :) - P(prevIdx, :);
+tlen = hypot(tvec(1), tvec(2));
+if tlen > 0
+    tvec = tvec / tlen;
+    n = [-tvec(2), tvec(1)];
+    if dot(n, -bestP) < 0
+        n = -n;
+    end
+else
+    n = [0, 0];
+end
+
+dx = bestP(1) - bestQ(1) + eps_in * n(1);
+dy = bestP(2) - bestQ(2) + eps_in * n(2);
 end
 
 function ensure_finalize(model)
@@ -340,20 +287,6 @@ catch
 end
 end
 
-function s = get_shape_file(fallback)
-% Read shape_file from MATLAB base workspace if provided; otherwise fallback.
-s = fallback;
-try
-    if evalin('base', 'exist(''shape_file'',''var'')')
-        v = evalin('base', 'shape_file');
-        if ischar(v) || isstring(v)
-            s = char(v);
-        end
-    end
-catch
-end
-end
-
 function params = get_fourier_params(model)
 % Collect Fourier boundary parameters.
 params.r0 = eval_param(model, 'r0', 0.012);
@@ -375,6 +308,96 @@ r = params.r0 * amp;
 x = r .* cos(t);
 y = r .* sin(t);
 end
+
+function s = get_shape_file(fallback)
+% Read shape_file from MATLAB base workspace if provided; otherwise fallback.
+% fallback can be a directory or a file path (absolute or relative).
+
+s = '';
+baseDir = '';
+
+fallbackAbs = resolve_path(fallback);
+if isfolder(fallbackAbs)
+    baseDir = fallbackAbs;
+else
+    s = fallbackAbs;
+    baseDir = fileparts(fallbackAbs);
+end
+
+try
+    if evalin('base', 'exist(''shape_file'',''var'')')
+        v = evalin('base', 'shape_file');
+        if ischar(v) || isstring(v)
+            candRaw = char(v);
+            if is_absolute_path(candRaw)
+                cand = candRaw;
+            else
+                cand = fullfile(baseDir, candRaw);
+                if ~isfile(cand) && ~isfolder(cand)
+                    cand = resolve_path(candRaw);
+                end
+            end
+            if isfolder(cand)
+                baseDir = cand;
+                s = '';
+            elseif isfile(cand)
+                s = cand;
+            end
+        end
+    end
+catch
+end
+
+if isempty(s) && ~isempty(baseDir)
+    files = dir(fullfile(baseDir, '*_contour_xy.csv'));
+    if isempty(files)
+        files = dir(fullfile(baseDir, '*.csv'));
+    end
+    if ~isempty(files)
+        names = sort({files.name});
+        s = fullfile(baseDir, names{1});
+    end
+end
+end
+
+function p = resolve_path(p)
+% Resolve relative paths from project root.
+if isempty(p)
+    return;
+end
+if isstring(p)
+    p = char(p);
+end
+if ~ischar(p)
+    return;
+end
+if ~is_absolute_path(p)
+    [thisDir, ~, ~] = fileparts(mfilename('fullpath'));
+    projectRoot = fileparts(thisDir);
+    p = fullfile(projectRoot, p);
+end
+end
+
+function tf = is_absolute_path(p)
+tf = false;
+if isempty(p)
+    return;
+end
+if isstring(p)
+    p = char(p);
+end
+if ~ischar(p)
+    return;
+end
+if numel(p) >= 2 && p(2) == ':'
+    tf = true;
+    return;
+end
+if startsWith(p, filesep)
+    tf = true;
+end
+end
+
 
 function print_domain_counts(model, intTag, difTag)
 % Best-effort domain counts for geometry features.

@@ -94,3 +94,77 @@ def choose_main_contour(
     areas = [abs(polygon_area(c[:, [1, 0]])) for c in candidates]
     idx = int(np.argmax(areas))
     return candidates[idx]
+
+
+def _edge_key(p0: tuple[int, int], p1: tuple[int, int]) -> tuple[tuple[int, int], tuple[int, int]]:
+    return (p0, p1) if p0 <= p1 else (p1, p0)
+
+
+def _trace_loops(edges: list[tuple[tuple[int, int], tuple[int, int]]]) -> list[list[tuple[int, int]]]:
+    adj: dict[tuple[int, int], list[tuple[int, int]]] = {}
+    for p0, p1 in edges:
+        adj.setdefault(p0, []).append(p1)
+        adj.setdefault(p1, []).append(p0)
+
+    used: set[tuple[tuple[int, int], tuple[int, int]]] = set()
+    loops: list[list[tuple[int, int]]] = []
+
+    for p0, p1 in edges:
+        key = _edge_key(p0, p1)
+        if key in used:
+            continue
+        used.add(key)
+        loop = [p0, p1]
+
+        while True:
+            cur = loop[-1]
+            prev = loop[-2]
+            neighbors = adj.get(cur, [])
+            if not neighbors:
+                break
+            if len(neighbors) == 1:
+                nxt = neighbors[0]
+            else:
+                nxt = neighbors[0] if neighbors[0] != prev else neighbors[1]
+
+            edge_key = _edge_key(cur, nxt)
+            if edge_key in used:
+                if nxt == loop[0]:
+                    loop.append(nxt)
+                break
+            used.add(edge_key)
+            loop.append(nxt)
+            if nxt == loop[0]:
+                break
+
+        if len(loop) >= 4:
+            loops.append(loop)
+
+    return loops
+
+
+def find_pixel_boundaries(A: np.ndarray) -> list[np.ndarray]:
+    on = np.argwhere(A > 0.5)
+    if on.size == 0:
+        return []
+
+    edge_counts: dict[tuple[tuple[int, int], tuple[int, int]], int] = {}
+    for r, c in on:
+        r2 = int(r) * 2
+        c2 = int(c) * 2
+        tl = (r2 - 1, c2 - 1)
+        tr = (r2 - 1, c2 + 1)
+        br = (r2 + 1, c2 + 1)
+        bl = (r2 + 1, c2 - 1)
+        for p0, p1 in ((tl, tr), (tr, br), (br, bl), (bl, tl)):
+            key = _edge_key(p0, p1)
+            edge_counts[key] = edge_counts.get(key, 0) + 1
+
+    boundary_edges = [edge for edge, count in edge_counts.items() if count == 1]
+    loops = _trace_loops(boundary_edges)
+
+    out = []
+    for loop in loops:
+        pts = np.array(loop, dtype=float) / 2.0
+        out.append(pts)
+    return out
