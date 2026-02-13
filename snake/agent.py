@@ -45,6 +45,7 @@ def extract_features(env: SnakeEnv) -> str:
 
 class QLearningAgent:
     def __init__(self, actions: int = 4, alpha: float = 0.2, gamma: float = 0.95, epsilon: float = 0.2, epsilon_min: float = 0.05, epsilon_decay: float = 0.995):
+        self.agent_type = "q"
         self.actions = actions
         self.alpha = alpha
         self.gamma = gamma

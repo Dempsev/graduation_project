@@ -108,11 +108,56 @@ try
         java.io.File(export_dir).mkdirs();
     catch
     end
+    try
+        model.result.export.remove('tbl1csv');
+    catch
+    end
     model.result.export.create('tbl1csv', 'Table');
     model.result.export('tbl1csv').set('table', 'tbl1');
-    ts = datestr(now, 'yyyymmdd_HHMMSSFFF');
-    model.result.export('tbl1csv').set('filename', fullfile(export_dir, ['tbl1_' ts '.csv']));
+    nameStem = resolve_tbl1_name_stem();
+    model.result.export('tbl1csv').set('filename', fullfile(export_dir, [nameStem '_tbl1.csv']));
     model.result.export('tbl1csv').run;
 catch
+end
+end
+
+function nameStem = resolve_tbl1_name_stem()
+% Prefer shape-based naming (ep*_step*), fallback to timestamp-free default.
+nameStem = 'tbl1';
+try
+    if evalin('base', 'exist(''shape_export_name'',''var'')')
+        v = evalin('base', 'shape_export_name');
+        if ischar(v) || isstring(v)
+            vv = char(v);
+            if ~isempty(strtrim(vv))
+                nameStem = sanitize_file_stem(vv);
+                return;
+            end
+        end
+    end
+catch
+end
+try
+    if evalin('base', 'exist(''shape_file'',''var'')')
+        sf = evalin('base', 'shape_file');
+        if ischar(sf) || isstring(sf)
+            [~, bn, ~] = fileparts(char(sf));
+            m = regexp(bn, '(ep\d+_step\d+)', 'tokens', 'once');
+            if ~isempty(m)
+                nameStem = sanitize_file_stem(m{1});
+                return;
+            end
+            nameStem = sanitize_file_stem(bn);
+        end
+    end
+catch
+end
+end
+
+function s = sanitize_file_stem(s)
+% Keep filename safe and deterministic.
+s = regexprep(char(s), '[^a-zA-Z0-9_\-]', '_');
+if isempty(s)
+    s = 'tbl1';
 end
 end

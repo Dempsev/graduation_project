@@ -1,0 +1,15 @@
+﻿# IDE/editor
+.vscode/
+
+# Python
+__pycache__/
+*.pyc
+
+# Generated data/artifacts
+data/
+snake/__pycache__/
+snake/logs/
+snake/logs/**
+
+# Archives
+*.zip

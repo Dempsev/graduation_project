@@ -20,7 +20,7 @@ model.modelPath(dataDir);
 model.label('mother_rebuild');
 
 % Toggle: only build geometry (skip physics/mesh/study/results)
-only_geom = true;
+only_geom = false;
 
 % Parameters
 model = set_params_01(model);
@@ -32,6 +32,7 @@ if only_geom
     mpath = char(model.modelPath());
     mphfile = fullfile(mpath, 'mother_rebuild.mph');
     mphsave(model, mphfile);
+    fprintf('Saved geometry-only model: %s\n', mphfile);
     return;
 end
 
@@ -55,3 +56,5 @@ model = set_results_07(model);
 mpath = char(model.modelPath());
 mphfile = fullfile(mpath, 'mother_rebuild.mph');
 mphsave(model, mphfile);
+fprintf('Saved full model: %s\n', mphfile);
+fprintf('tbl1 CSV export directory: %s\n', fullfile(mpath, 'tbl1_exports'));

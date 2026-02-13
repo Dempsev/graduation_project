@@ -1,276 +1,817 @@
 <!DOCTYPE html>
 <html lang="zh-CN">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>强化学习贪吃蛇</title>
-    <style>
-      body {
-        font-family: system-ui, sans-serif;
-        margin: 20px;
-        background: #ffffff; /* 强制浅色背景，避免黑底黑字 */
-        color: #222222;      /* 高对比文字颜色 */
-      }
-      #panel { margin-bottom: 12px; display: flex; gap: 8px; align-items: center; }
-      canvas { border: 1px solid #ccc; }
-      #board, #chart { background: #ffffff; } /* 画布也使用浅色背景 */
-      .stat { margin-left: 8px; }
-      button { padding: 6px 10px; }
-      input { width: 80px; }
-    </style>
-  </head>
-  <body>
-    <h2>强化学习贪吃蛇（RL Snake）</h2>
-    <div id="panel">
-      <button id="startBtn">开始训练</button>
-      <button id="stopBtn">停止训练</button>
-      <label>界面大小 n：<input id="nInput" type="number" min="5" value="32" /></label>
-      <button id="applyBtn">应用</button>
-      <label style="margin-left:8px;">智能体：
-        <select id="agentSelect">
-          <option value="q">Q-learning</option>
-          <option value="dqn">DQN</option>
-        </select>
-      </label>
-      <button id="applyAgent">应用智能体</button>
-      <label style="margin-left:8px;">检查点：
-        <select id="ckptSelect" style="min-width:220px"></select>
-      </label>
-      <button id="refreshCkpt">刷新</button>
-      <button id="loadCkpt">加载</button>
-      <span class="stat">回合：<span id="episode">0</span></span>
-      <span class="stat">长度：<span id="length">0</span></span>
-      <span class="stat">得分：<span id="score">0</span></span>
-      <span class="stat">ε：<span id="epsilon">0</span></span>
-      <span class="stat">智能体：<span id="agentType">q</span></span>
-      <span class="stat">记录计数：<span id="recordStats">—</span></span>
-    </div>
-    <div style="display:flex; gap:16px; align-items:flex-start;">
-      <canvas id="board" width="420" height="420"></canvas>
-      <div style="flex:1;">
-        <div style="display:flex; align-items:center; gap:8px;">
-          <h4 style="margin:0;">每轮长度曲线</h4>
-          <label style="font-size:12px;">显示最后
-            <input id="limitInput" type="number" min="50" value="200" style="width:80px;"> 轮
-          </label>
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>RL Snake 控制台</title>
+  <style>
+    :root {
+      --bg: #eef3fb;
+      --bg-soft: #f8fbff;
+      --panel: rgba(255, 255, 255, 0.78);
+      --panel-strong: rgba(255, 255, 255, 0.92);
+      --text: #111827;
+      --muted: #64748b;
+      --line: rgba(15, 23, 42, 0.1);
+      --line-strong: rgba(15, 23, 42, 0.18);
+      --primary: #0067c0;
+      --primary-soft: rgba(0, 103, 192, 0.12);
+      --success: #0f9d58;
+      --danger: #cf3f3f;
+      --warning: #a16207;
+      --snake: #2aa36b;
+      --food: #cc4e4e;
+      --shadow: 0 16px 40px rgba(15, 23, 42, 0.12);
+      --radius: 20px;
+    }
+
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+
+    body {
+      font-family: "SF Pro Display", "Segoe UI Variable Text", "PingFang SC", "Microsoft YaHei", sans-serif;
+      color: var(--text);
+      min-height: 100vh;
+      background:
+        radial-gradient(circle at 10% 10%, #d8e8ff 0%, transparent 42%),
+        radial-gradient(circle at 92% 12%, #e3f3ff 0%, transparent 36%),
+        linear-gradient(145deg, #eef3fb 0%, #f5f8fd 48%, #edf3fb 100%);
+      padding: 24px;
+    }
+
+    .app {
+      max-width: 1360px;
+      margin: 0 auto;
+      display: grid;
+      gap: 20px;
+    }
+
+    .hero {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      box-shadow: var(--shadow);
+      padding: 22px 24px;
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      animation: rise 420ms ease-out;
+    }
+
+    .hero h1 {
+      font-size: clamp(1.35rem, 1.8vw, 2rem);
+      letter-spacing: 0.01em;
+      margin-bottom: 6px;
+    }
+
+    .hero p { color: var(--muted); font-size: 0.95rem; }
+
+    .status-badge {
+      display: inline-flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 14px;
+      border-radius: 999px;
+      border: 1px solid var(--line);
+      font-size: 0.85rem;
+      font-weight: 600;
+      background: #fff;
+    }
+
+    .status-badge::before {
+      content: "";
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      display: inline-block;
+      background: currentColor;
+      box-shadow: 0 0 0 4px color-mix(in srgb, currentColor 20%, transparent);
+    }
+
+    .status-running {
+      color: var(--success);
+      border-color: color-mix(in srgb, var(--success) 35%, #ffffff);
+      background: color-mix(in srgb, var(--success) 10%, #ffffff);
+    }
+
+    .status-stopped {
+      color: var(--danger);
+      border-color: color-mix(in srgb, var(--danger) 35%, #ffffff);
+      background: color-mix(in srgb, var(--danger) 8%, #ffffff);
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 420px 1fr;
+      gap: 20px;
+      align-items: start;
+    }
+
+    .stack { display: grid; gap: 20px; }
+
+    .panel {
+      border: 1px solid var(--line);
+      border-radius: var(--radius);
+      background: var(--panel);
+      backdrop-filter: blur(14px);
+      box-shadow: var(--shadow);
+      padding: 18px;
+      animation: rise 500ms ease-out;
+    }
+
+    .panel-title {
+      font-size: 0.8rem;
+      letter-spacing: 0.12em;
+      color: var(--muted);
+      font-weight: 700;
+      text-transform: uppercase;
+      margin-bottom: 14px;
+    }
+
+    .controls { display: grid; gap: 12px; }
+
+    .control-row {
+      display: grid;
+      gap: 10px;
+      grid-template-columns: 78px 1fr auto auto;
+      align-items: center;
+    }
+
+    .control-label { color: var(--muted); font-size: 0.86rem; }
+
+    .btn {
+      border: 1px solid transparent;
+      border-radius: 12px;
+      padding: 9px 14px;
+      font-size: 0.85rem;
+      font-weight: 600;
+      cursor: pointer;
+      transition: transform 120ms ease, box-shadow 120ms ease, background 160ms ease;
+      white-space: nowrap;
+    }
+
+    .btn:hover { transform: translateY(-1px); }
+    .btn:active { transform: translateY(0); }
+
+    .btn-primary {
+      background: linear-gradient(132deg, #0078d4 0%, #005a9c 100%);
+      color: #fff;
+      box-shadow: 0 8px 20px rgba(0, 94, 184, 0.24);
+    }
+
+    .btn-secondary {
+      background: #ffffff;
+      border-color: var(--line);
+      color: #1f2937;
+    }
+
+    .btn-success {
+      background: linear-gradient(132deg, #17a24d 0%, #0d7c3b 100%);
+      color: #fff;
+    }
+
+    .btn-danger {
+      background: linear-gradient(132deg, #dd4f4f 0%, #b93b3b 100%);
+      color: #fff;
+    }
+
+    input, select {
+      width: 100%;
+      border: 1px solid var(--line);
+      border-radius: 10px;
+      background: var(--panel-strong);
+      color: var(--text);
+      padding: 8px 10px;
+      font-size: 0.88rem;
+      outline: none;
+      transition: border-color 160ms ease, box-shadow 160ms ease;
+    }
+
+    input:focus, select:focus {
+      border-color: color-mix(in srgb, var(--primary) 70%, white);
+      box-shadow: 0 0 0 3px var(--primary-soft);
+    }
+
+    #nInput { max-width: 100px; }
+    #limitInput { max-width: 76px; display: inline-block; margin: 0 6px; }
+
+    .agent-chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      border-radius: 999px;
+      background: var(--primary-soft);
+      color: var(--primary);
+      font-size: 0.82rem;
+      padding: 6px 11px;
+      justify-self: start;
+    }
+
+    .record-stats {
+      margin-top: 12px;
+      border: 1px dashed var(--line-strong);
+      border-radius: 12px;
+      background: var(--bg-soft);
+      color: #334155;
+      font-size: 0.8rem;
+      line-height: 1.55;
+      padding: 10px 12px;
+      min-height: 48px;
+    }
+
+    .board-wrap { display: grid; place-items: center; }
+
+    #board {
+      width: min(100%, 620px);
+      height: auto;
+      border-radius: 16px;
+      border: 1px solid var(--line);
+      background: #f7fbff;
+      box-shadow: inset 0 0 0 1px rgba(15, 23, 42, 0.04), 0 16px 34px rgba(15, 23, 42, 0.1);
+    }
+
+    .stats-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .stat {
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: var(--panel-strong);
+      padding: 12px;
+      min-height: 78px;
+      display: grid;
+      align-content: center;
+      animation: rise 560ms ease-out;
+    }
+
+    .stat-value { font-size: 1.4rem; font-weight: 700; line-height: 1.05; }
+    .stat-label { font-size: 0.78rem; color: var(--muted); margin-top: 4px; }
+
+    .chart-head {
+      margin-bottom: 12px;
+      display: flex;
+      flex-wrap: wrap;
+      justify-content: space-between;
+      gap: 10px;
+      align-items: center;
+      color: var(--muted);
+      font-size: 0.85rem;
+    }
+
+    #chart {
+      width: 100%;
+      max-width: 100%;
+      height: auto;
+      border-radius: 14px;
+      background: var(--panel-strong);
+      border: 1px solid var(--line);
+      padding: 8px;
+    }
+
+    .top3-grid {
+      display: grid;
+      grid-template-columns: repeat(3, minmax(0, 1fr));
+      gap: 12px;
+    }
+
+    .top3-item {
+      border-radius: 14px;
+      border: 1px solid var(--line);
+      background: var(--panel-strong);
+      padding: 10px;
+      transition: transform 140ms ease, box-shadow 140ms ease;
+    }
+
+    .top3-item:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 10px 24px rgba(15, 23, 42, 0.12);
+    }
+
+    .top3-label {
+      color: var(--muted);
+      font-size: 0.76rem;
+      min-height: 18px;
+      margin-bottom: 8px;
+    }
+
+    .top3-canvas {
+      width: 100%;
+      height: auto;
+      border-radius: 10px;
+      border: 1px solid var(--line);
+      background: #f6fbff;
+    }
+
+    .toast {
+      position: fixed;
+      right: 22px;
+      top: 22px;
+      z-index: 1000;
+      border-radius: 12px;
+      padding: 11px 16px;
+      color: #fff;
+      font-weight: 600;
+      box-shadow: 0 16px 34px rgba(15, 23, 42, 0.3);
+      transform: translateY(-16px);
+      opacity: 0;
+      pointer-events: none;
+      transition: all 220ms ease;
+    }
+
+    .toast.show { transform: translateY(0); opacity: 1; }
+    .toast-success { background: #14814e; }
+    .toast-error { background: #c23f3f; }
+
+    @keyframes rise {
+      from { transform: translateY(8px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+
+    @media (max-width: 1180px) {
+      .layout { grid-template-columns: 1fr; }
+      .control-row { grid-template-columns: 78px 1fr auto; }
+      .control-row .btn:last-child { grid-column: 3; }
+    }
+
+    @media (max-width: 760px) {
+      body { padding: 14px; }
+      .hero { padding: 16px; flex-direction: column; gap: 10px; align-items: flex-start; }
+      .stats-grid { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+      .top3-grid { grid-template-columns: 1fr; }
+      .control-row { grid-template-columns: 1fr; }
+      .control-label { font-size: 0.8rem; }
+    }
+  </style>
+</head>
+<body>
+  <div class="app">
+    <section class="hero">
+      <div>
+        <h1>RL Snake 训练控制台</h1>
+        <p>实时训练、状态监控与最佳样本预览</p>
+      </div>
+      <span id="statusBadge" class="status-badge status-stopped">已停止</span>
+    </section>
+
+    <section class="layout">
+      <div class="stack">
+        <div class="panel">
+          <div class="panel-title">控制面板</div>
+          <div class="controls">
+            <div class="control-row">
+              <span class="control-label">训练</span>
+              <button id="startBtn" class="btn btn-success">开始训练</button>
+              <button id="stopBtn" class="btn btn-danger">停止并保存</button>
+            </div>
+
+            <div class="control-row">
+              <span class="control-label">网格大小</span>
+              <input id="nInput" type="number" min="5" value="32" />
+              <button id="applyBtn" class="btn btn-secondary">应用</button>
+            </div>
+
+            <div class="control-row">
+              <span class="control-label">智能体</span>
+              <select id="agentSelect">
+                <option value="q">Q-learning</option>
+                <option value="dqn">DQN</option>
+              </select>
+              <button id="applyAgent" class="btn btn-secondary">切换</button>
+            </div>
+
+            <div class="control-row">
+              <span class="control-label">当前模型</span>
+              <span class="agent-chip" id="agentType">q</span>
+            </div>
+
+            <div class="control-row">
+              <span class="control-label">检查点</span>
+              <select id="ckptSelect"></select>
+              <button id="refreshCkpt" class="btn btn-secondary">刷新</button>
+              <button id="loadCkpt" class="btn btn-primary">加载</button>
+            </div>
+          </div>
+          <div class="record-stats" id="recordStats">等待统计数据...</div>
         </div>
-        <canvas id="chart" width="420" height="220"></canvas>
-        <div>
-          <h4 style="margin:10px 0 6px;">历史最长 Top3 的最后帧</h4>
-          <div style="display:flex; gap:8px;">
-            <div><div id="t1label" style="font-size:12px;">—</div><canvas id="t1" width="130" height="130"></canvas></div>
-            <div><div id="t2label" style="font-size:12px;">—</div><canvas id="t2" width="130" height="130"></canvas></div>
-            <div><div id="t3label" style="font-size:12px;">—</div><canvas id="t3" width="130" height="130"></canvas></div>
+
+        <div class="panel">
+          <div class="panel-title">实时棋盘</div>
+          <div class="board-wrap">
+            <canvas id="board" width="560" height="560"></canvas>
           </div>
         </div>
       </div>
-    </div>
 
-    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
-    <script>
-      const cvs = document.getElementById('board');
-      const ctx = cvs.getContext('2d');
-      const startBtn = document.getElementById('startBtn');
-      const stopBtn = document.getElementById('stopBtn');
-      const applyBtn = document.getElementById('applyBtn');
-      const nInput = document.getElementById('nInput');
-      const ckptSelect = document.getElementById('ckptSelect');
-      const refreshCkpt = document.getElementById('refreshCkpt');
-      const loadCkpt = document.getElementById('loadCkpt');
-      const agentSelect = document.getElementById('agentSelect');
-      const applyAgent = document.getElementById('applyAgent');
-      const epsEl = document.getElementById('epsilon');
-      const epEl = document.getElementById('episode');
-      const lenEl = document.getElementById('length');
-      const scoreEl = document.getElementById('score');
-      const agentTypeEl = document.getElementById('agentType');
-      const recordStatsEl = document.getElementById('recordStats');
+      <div class="stack">
+        <div class="panel">
+          <div class="panel-title">训练统计</div>
+          <div class="stats-grid">
+            <div class="stat">
+              <div class="stat-value" id="episode">0</div>
+              <div class="stat-label">回合</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value" id="length" style="color: var(--success);">3</div>
+              <div class="stat-label">当前长度</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value" id="score" style="color: var(--warning);">0</div>
+              <div class="stat-label">得分</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value" id="epsilon" style="color: var(--primary);">0.200</div>
+              <div class="stat-label">探索率 ε</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value" id="maxLength" style="color: #c23f3f;">3</div>
+              <div class="stat-label">历史最大长度</div>
+            </div>
+            <div class="stat">
+              <div class="stat-value" id="avgLength" style="color: #334155;">3.0</div>
+              <div class="stat-label">平均长度</div>
+            </div>
+          </div>
+        </div>
 
-      startBtn.onclick = async () => {
-        await fetch('/train/start', { method: 'POST' });
-      };
-      stopBtn.onclick = async () => {
-        const res = await fetch('/train/stop', { method: 'POST' });
-        const data = await res.json();
-        if (data.file) {
-          // 自动刷新一次列表
-          await loadCheckpoints();
-        }
-      };
-      applyBtn.onclick = async () => {
-        const n = Number(nInput.value);
-        await fetch('/config', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ n })
-        });
-      };
+        <div class="panel">
+          <div class="panel-title">长度曲线</div>
+          <div class="chart-head">
+            <span>每回合最终长度</span>
+            <label>显示最近<input id="limitInput" type="number" min="50" value="200" />回合</label>
+          </div>
+          <canvas id="chart" width="760" height="300"></canvas>
+        </div>
 
-      applyAgent.onclick = async () => {
-        const type = agentSelect.value;
-        const res = await fetch('/agent/set', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ type })
-        });
-        try {
-          const data = await res.json();
-          if (data.agent_type) agentTypeEl.textContent = data.agent_type;
-        } catch (e) {}
-      };
+        <div class="panel">
+          <div class="panel-title">历史 Top 3</div>
+          <div class="top3-grid">
+            <div class="top3-item">
+              <div class="top3-label" id="t1label">--</div>
+              <canvas id="t1" class="top3-canvas" width="220" height="220"></canvas>
+            </div>
+            <div class="top3-item">
+              <div class="top3-label" id="t2label">--</div>
+              <canvas id="t2" class="top3-canvas" width="220" height="220"></canvas>
+            </div>
+            <div class="top3-item">
+              <div class="top3-label" id="t3label">--</div>
+              <canvas id="t3" class="top3-canvas" width="220" height="220"></canvas>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+  </div>
 
-      function draw(state) {
-        const n = state.n;
-        const cell = Math.floor(Math.min(cvs.width, cvs.height) / n);
-        ctx.clearRect(0, 0, cvs.width, cvs.height);
-        ctx.fillStyle = '#f8f8f8';
-        ctx.fillRect(0, 0, cvs.width, cvs.height);
+  <div id="toast" class="toast"></div>
 
-        // 网格线（淡灰色）
-        ctx.strokeStyle = '#eee';
-        for (let i = 0; i <= n; i++) {
-          ctx.beginPath(); ctx.moveTo(i*cell, 0); ctx.lineTo(i*cell, n*cell); ctx.stroke();
-          ctx.beginPath(); ctx.moveTo(0, i*cell); ctx.lineTo(n*cell, i*cell); ctx.stroke();
-        }
+  <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+  <script>
+    const cvs = document.getElementById('board');
+    const ctx = cvs.getContext('2d');
+    const startBtn = document.getElementById('startBtn');
+    const stopBtn = document.getElementById('stopBtn');
+    const applyBtn = document.getElementById('applyBtn');
+    const nInput = document.getElementById('nInput');
+    const ckptSelect = document.getElementById('ckptSelect');
+    const refreshCkpt = document.getElementById('refreshCkpt');
+    const loadCkpt = document.getElementById('loadCkpt');
+    const agentSelect = document.getElementById('agentSelect');
+    const applyAgent = document.getElementById('applyAgent');
+    const statusBadge = document.getElementById('statusBadge');
+    const toast = document.getElementById('toast');
 
-        // 画蛇
-        ctx.fillStyle = '#28a745';
-        for (const [x, y] of state.snake) {
-          ctx.fillRect(x * cell + 1, y * cell + 1, cell - 2, cell - 2);
-        }
+    const epsEl = document.getElementById('epsilon');
+    const epEl = document.getElementById('episode');
+    const lenEl = document.getElementById('length');
+    const scoreEl = document.getElementById('score');
+    const agentTypeEl = document.getElementById('agentType');
+    const recordStatsEl = document.getElementById('recordStats');
+    const maxLenEl = document.getElementById('maxLength');
+    const avgLenEl = document.getElementById('avgLength');
 
-        // 画食物
-        if (state.food) {
-          const [fx, fy] = state.food;
-          ctx.fillStyle = '#dc3545';
-          ctx.fillRect(fx * cell + 1, fy * cell + 1, cell - 2, cell - 2);
-        }
+    const colors = getComputedStyle(document.documentElement);
+    const colorSnake = colors.getPropertyValue('--snake').trim() || '#2aa36b';
+    const colorFood = colors.getPropertyValue('--food').trim() || '#cc4e4e';
+    const colorGrid = 'rgba(51, 65, 85, 0.22)';
 
-        // 统计信息
-        epEl.textContent = state.episode ?? 0;
-        lenEl.textContent = state.snake ? state.snake.length : 0;
-        scoreEl.textContent = state.score ?? 0;
-        epsEl.textContent = (state.epsilon ?? 0).toFixed(3);
-        if (state.agent_type) {
-          agentTypeEl.textContent = state.agent_type;
-          // 同步选择框但不触发切换
-          try { agentSelect.value = state.agent_type; } catch (e) {}
-        }
-        // 记录计数展示：按长度升序 "L:count/target | ..."；空时显示 0/target
-        if (state.record_counts && state.record_targets) {
-          try {
-            const lengths = Object.keys(state.record_targets).map(Number).sort((a,b)=>a-b);
-            const parts = lengths.map(L => {
-              const c = Number(state.record_counts[L] || 0);
-              const t = Number(state.record_targets[L] || 0);
-              return `${L}:${c}/${t}`;
-            });
-            recordStatsEl.textContent = parts.length ? parts.join(' | ') : '—';
-          } catch (e) {}
-        }
+    let isRunning = false;
+    let maxLength = 3;
+    let episodeLengths = [];
+
+    function showToast(message, type = 'success') {
+      toast.textContent = message;
+      toast.className = `toast toast-${type}`;
+      setTimeout(() => toast.classList.add('show'), 10);
+      setTimeout(() => toast.classList.remove('show'), 3000);
+    }
+
+    function updateStatus(running) {
+      isRunning = running;
+      if (running) {
+        statusBadge.className = 'status-badge status-running';
+        statusBadge.textContent = '训练中';
+      } else {
+        statusBadge.className = 'status-badge status-stopped';
+        statusBadge.textContent = '已停止';
       }
+    }
 
-      // 曲线图初始化
-      const chartCtx = document.getElementById('chart').getContext('2d');
-      const lengthChart = new Chart(chartCtx, {
-        type: 'line',
-        data: { labels: [], datasets: [{ label: '长度', data: [], borderColor: '#007bff', backgroundColor: 'rgba(0,123,255,0.1)', tension: 0.2 }] },
-        options: { responsive: false, animation: false, scales: { x: { title: { display: true, text: '回合' } }, y: { title: { display: true, text: '长度' }, beginAtZero: true } } }
+    startBtn.onclick = async () => {
+      const res = await fetch('/train/start', { method: 'POST' });
+      const data = await res.json();
+      if (data.status === 'started') {
+        updateStatus(true);
+        showToast('训练已开始');
+      } else if (data.status === 'already_running') {
+        showToast('训练已在进行中', 'error');
+      }
+    };
+
+    stopBtn.onclick = async () => {
+      const res = await fetch('/train/stop', { method: 'POST' });
+      const data = await res.json();
+      if (data.file) {
+        updateStatus(false);
+        showToast(`已保存: ${data.file}`);
+        await loadCheckpoints();
+      }
+    };
+
+    applyBtn.onclick = async () => {
+      const n = Number(nInput.value);
+      await fetch('/config', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ n })
       });
+      showToast(`网格大小已设置为 ${n}`);
+    };
 
-      let lastEpisode = 0;
-      let limitPoints = 0; // 0 表示后端返回全部
-      const limitInput = document.getElementById('limitInput');
-      limitInput.onchange = () => {
-        // 这里用于控制图表刻度密度，而不是截断数据
-        const desiredTicks = Number(limitInput.value) || 200;
-        lengthChart.options.scales.x.ticks.maxTicksLimit = Math.max(10, Math.min(50, desiredTicks));
-      };
-
-      async function tick() {
-        try {
-          const res = await fetch('/state?limit=' + (limitPoints || 0));
-          const state = await res.json();
-          draw(state);
-
-          // 更新曲线（仅在新回合时刷新，减轻负载）
-          const ep = state.episode || 0;
-          if (ep !== lastEpisode) {
-            const lengths = state.lengths || [];
-            const labels = Array.from({ length: lengths.length }, (_, i) => i + 1);
-            lengthChart.data.labels = labels;
-            lengthChart.data.datasets[0].data = lengths;
-            // 动态调整刻度密度：最多显示N个刻度
-            lengthChart.options.scales.x.ticks.maxTicksLimit = lengthChart.options.scales.x.ticks.maxTicksLimit || 20;
-            lengthChart.update();
-            lastEpisode = ep;
-          }
-          // 更新Top3预览
-          try {
-            const tRes = await fetch('/top3');
-            const { top3 } = await tRes.json();
-            const canvases = [document.getElementById('t1'), document.getElementById('t2'), document.getElementById('t3')];
-            const labels = [document.getElementById('t1label'), document.getElementById('t2label'), document.getElementById('t3label')];
-            for (let i = 0; i < 3; i++) {
-              const c = canvases[i];
-              const l = labels[i];
-              const ctx2 = c.getContext('2d');
-              ctx2.clearRect(0,0,c.width,c.height);
-              if (top3 && top3[i]) {
-                const st = top3[i].state;
-                l.textContent = `回合${top3[i].episode} 长度${top3[i].length}`;
-                const n = st.n;
-                const cell = Math.floor(Math.min(c.width, c.height) / n);
-                // 背景
-                ctx2.fillStyle = '#f8f8f8';
-                ctx2.fillRect(0,0,c.width,c.height);
-                // 蛇
-                ctx2.fillStyle = '#28a745';
-                for (const [x, y] of st.snake) {
-                  ctx2.fillRect(x * cell + 1, y * cell + 1, cell - 2, cell - 2);
-                }
-                // 食物
-                if (st.food) {
-                  const [fx, fy] = st.food;
-                  ctx2.fillStyle = '#dc3545';
-                  ctx2.fillRect(fx * cell + 1, fy * cell + 1, cell - 2, cell - 2);
-                }
-              } else {
-                l.textContent = '—';
-              }
-            }
-          } catch (e) {}
-        } catch (e) {
-          // 忽略网络错误
+    applyAgent.onclick = async () => {
+      const type = agentSelect.value;
+      const res = await fetch('/agent/set', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type })
+      });
+      try {
+        const data = await res.json();
+        if (data.status === 'ok') {
+          agentTypeEl.textContent = data.agent_type;
+          showToast(`已切换到 ${data.agent_type === 'q' ? 'Q-learning' : 'DQN'}`);
+        } else if (data.reason === 'cannot_switch_while_running') {
+          showToast('训练进行中无法切换智能体', 'error');
+        } else {
+          showToast('切换失败', 'error');
         }
-        requestAnimationFrame(tick);
+      } catch {
+        showToast('切换失败', 'error');
       }
-      tick();
+    };
 
-      // 检查点列表加载与操作（修复了脚本位置导致函数未生效的问题）
-      async function loadCheckpoints() {
-        try {
-          const res = await fetch('/checkpoints');
-          const { files } = await res.json();
-          ckptSelect.innerHTML = '';
-          for (const f of files) {
-            const opt = document.createElement('option');
-            const dt = new Date(f.mtime * 1000);
-            opt.value = f.name;
-            opt.textContent = `${f.name} (${dt.toLocaleString()})`;
-            ckptSelect.appendChild(opt);
-          }
-        } catch (e) {}
+    function draw(state) {
+      const n = state.n;
+      const cell = Math.floor(Math.min(cvs.width, cvs.height) / n);
+      const offsetX = (cvs.width - n * cell) / 2;
+      const offsetY = (cvs.height - n * cell) / 2;
+
+      ctx.fillStyle = '#f7fbff';
+      ctx.fillRect(0, 0, cvs.width, cvs.height);
+
+      ctx.strokeStyle = colorGrid;
+      ctx.lineWidth = 1;
+      for (let i = 0; i <= n; i++) {
+        ctx.beginPath();
+        ctx.moveTo(offsetX + i * cell, offsetY);
+        ctx.lineTo(offsetX + i * cell, offsetY + n * cell);
+        ctx.stroke();
+
+        ctx.beginPath();
+        ctx.moveTo(offsetX, offsetY + i * cell);
+        ctx.lineTo(offsetX + n * cell, offsetY + i * cell);
+        ctx.stroke();
       }
-      refreshCkpt.onclick = loadCheckpoints;
-      loadCkpt.onclick = async () => {
-        const filename = ckptSelect.value;
-        if (!filename) return;
-        await fetch('/train/load', {
-          method: 'POST', headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ filename })
-        });
-      };
-      // 初始化拉取一次
-      loadCheckpoints();
-    </script>
-  </body>
-  </html>
+
+      const snakeLen = state.snake ? state.snake.length : 0;
+      for (let i = 0; i < snakeLen; i++) {
+        const [x, y] = state.snake[i];
+        const p = i / Math.max(snakeLen - 1, 1);
+        const g = Math.round(150 - p * 45);
+        const r = Math.round(42 + p * 20);
+        const b = Math.round(107 - p * 25);
+        ctx.fillStyle = `rgb(${r}, ${g}, ${b})`;
+        ctx.fillRect(offsetX + x * cell + 2, offsetY + y * cell + 2, cell - 4, cell - 4);
+      }
+
+      if (state.food) {
+        const [fx, fy] = state.food;
+        ctx.shadowColor = colorFood;
+        ctx.shadowBlur = 10;
+        ctx.fillStyle = colorFood;
+        ctx.fillRect(offsetX + fx * cell + 3, offsetY + fy * cell + 3, cell - 6, cell - 6);
+        ctx.shadowBlur = 0;
+      }
+
+      epEl.textContent = state.episode ?? 0;
+      lenEl.textContent = snakeLen;
+      scoreEl.textContent = state.score ?? 0;
+      epsEl.textContent = (state.epsilon ?? 0).toFixed(3);
+
+      if (state.agent_type) agentTypeEl.textContent = state.agent_type;
+      if (state.running !== undefined) updateStatus(state.running);
+
+      if (state.record_counts && state.record_targets) {
+        try {
+          const lengths = Object.keys(state.record_targets).map(Number).sort((a, b) => a - b);
+          const parts = lengths.map(L => {
+            const c = Number(state.record_counts[L] || 0);
+            const t = Number(state.record_targets[L] || 0);
+            const pct = t > 0 ? Math.round(c / t * 100) : 0;
+            return `L${L}: ${c}/${t} (${pct}%)`;
+          });
+          recordStatsEl.textContent = parts.length ? parts.join(' | ') : '等待统计数据...';
+        } catch {}
+      }
+    }
+
+    const chartCtx = document.getElementById('chart').getContext('2d');
+    const lengthChart = new Chart(chartCtx, {
+      type: 'line',
+      data: {
+        labels: [],
+        datasets: [{
+          label: '蛇长度',
+          data: [],
+          borderColor: '#0067c0',
+          backgroundColor: 'rgba(0, 103, 192, 0.1)',
+          borderWidth: 2,
+          tension: 0.25,
+          pointRadius: 0,
+          pointHoverRadius: 4,
+          fill: true
+        }]
+      },
+      options: {
+        responsive: false,
+        animation: false,
+        interaction: { intersect: false, mode: 'index' },
+        plugins: {
+          legend: { labels: { color: '#475569' } }
+        },
+        scales: {
+          x: {
+            title: { display: true, text: '回合', color: '#64748b' },
+            ticks: { color: '#64748b', maxTicksLimit: 10 },
+            grid: { color: 'rgba(71, 85, 105, 0.2)' }
+          },
+          y: {
+            title: { display: true, text: '长度', color: '#64748b' },
+            ticks: { color: '#64748b' },
+            grid: { color: 'rgba(71, 85, 105, 0.2)' },
+            beginAtZero: true
+          }
+        }
+      }
+    });
+
+    let lastEpisode = 0;
+    let limitPoints = 0;
+    const limitInput = document.getElementById('limitInput');
+
+    async function tick() {
+      try {
+        const res = await fetch('/state?limit=' + (limitPoints || 0));
+        const state = await res.json();
+        draw(state);
+
+        const ep = state.episode || 0;
+        if (ep !== lastEpisode && state.lengths) {
+          episodeLengths = state.lengths;
+          const limit = parseInt(limitInput.value) || 200;
+          const displayData = limit > 0 && episodeLengths.length > limit
+            ? episodeLengths.slice(-limit)
+            : episodeLengths;
+
+          lengthChart.data.labels = displayData.map((_, i) => {
+            const startIdx = episodeLengths.length - displayData.length;
+            return startIdx + i + 1;
+          });
+          lengthChart.data.datasets[0].data = displayData;
+          lengthChart.update('none');
+
+          maxLength = Math.max(...episodeLengths, 3);
+          const avg = episodeLengths.reduce((a, b) => a + b, 0) / episodeLengths.length;
+          maxLenEl.textContent = maxLength;
+          avgLenEl.textContent = avg.toFixed(1);
+          lastEpisode = ep;
+        }
+
+        try {
+          const tRes = await fetch('/top3');
+          const { top3 } = await tRes.json();
+          const canvases = [document.getElementById('t1'), document.getElementById('t2'), document.getElementById('t3')];
+          const labels = [document.getElementById('t1label'), document.getElementById('t2label'), document.getElementById('t3label')];
+
+          for (let i = 0; i < 3; i++) {
+            const c = canvases[i];
+            const l = labels[i];
+            const ctx2 = c.getContext('2d');
+            ctx2.clearRect(0, 0, c.width, c.height);
+
+            if (top3 && top3[i]) {
+              const st = top3[i].state;
+              l.textContent = `回合 ${top3[i].episode} / 长度 ${top3[i].length}`;
+              l.style.color = '#0067c0';
+
+              const n = st.n;
+              const cell = Math.floor(Math.min(c.width, c.height) / (n + 2));
+              const offset = cell;
+
+              ctx2.fillStyle = '#f7fbff';
+              ctx2.fillRect(0, 0, c.width, c.height);
+
+              ctx2.strokeStyle = colorGrid;
+              for (let gi = 0; gi <= n; gi++) {
+                ctx2.beginPath();
+                ctx2.moveTo(offset + gi * cell, offset);
+                ctx2.lineTo(offset + gi * cell, offset + n * cell);
+                ctx2.stroke();
+
+                ctx2.beginPath();
+                ctx2.moveTo(offset, offset + gi * cell);
+                ctx2.lineTo(offset + n * cell, offset + gi * cell);
+                ctx2.stroke();
+              }
+
+              for (let si = 0; si < st.snake.length; si++) {
+                const [x, y] = st.snake[si];
+                const progress = si / Math.max(st.snake.length - 1, 1);
+                const g = Math.round(150 - progress * 45);
+                const r = Math.round(42 + progress * 20);
+                const b = Math.round(107 - progress * 25);
+                ctx2.fillStyle = `rgb(${r}, ${g}, ${b})`;
+                ctx2.fillRect(offset + x * cell + 1, offset + y * cell + 1, cell - 2, cell - 2);
+              }
+
+              if (st.food) {
+                const [fx, fy] = st.food;
+                ctx2.fillStyle = colorFood;
+                ctx2.fillRect(offset + fx * cell + 2, offset + fy * cell + 2, cell - 4, cell - 4);
+              }
+            } else {
+              l.textContent = '--';
+              l.style.color = '#64748b';
+              ctx2.fillStyle = '#f7fbff';
+              ctx2.fillRect(0, 0, c.width, c.height);
+            }
+          }
+        } catch {}
+      } catch {}
+
+      requestAnimationFrame(tick);
+    }
+
+    async function loadCheckpoints() {
+      try {
+        const res = await fetch('/checkpoints');
+        const { files } = await res.json();
+        ckptSelect.innerHTML = '';
+        for (const f of files) {
+          const opt = document.createElement('option');
+          const dt = new Date(f.mtime * 1000);
+          opt.value = f.name;
+          opt.textContent = `${f.name} (${dt.toLocaleString()})`;
+          ckptSelect.appendChild(opt);
+        }
+      } catch {}
+    }
+
+    refreshCkpt.onclick = loadCheckpoints;
+    loadCkpt.onclick = async () => {
+      const filename = ckptSelect.value;
+      if (!filename) {
+        showToast('请先选择检查点', 'error');
+        return;
+      }
+      const res = await fetch('/train/load', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ filename })
+      });
+      const data = await res.json();
+      if (data.status === 'loaded') {
+        showToast(`已加载 ${data.file}`);
+      } else {
+        showToast('加载失败', 'error');
+      }
+    };
+
+    loadCheckpoints();
+    tick();
+  </script>
+</body>
+</html>

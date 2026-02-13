@@ -8,14 +8,16 @@ addpath(genpath(fullfile(rootDir, 'model_core')));
 shapeDir = fullfile(rootDir, 'data', 'shape_points');
 outDir = fullfile(rootDir, 'data', 'shape_batch');
 modelsDir = fullfile(outDir, 'models');
-tablesDir = fullfile(outDir, 'tables');
+logDir = fullfile(outDir, 'logs');
+errorLogCsv = fullfile(logDir, 'run_shape_batch_errors.csv');
 
 if ~exist(shapeDir, 'dir')
     error("shape_points dir not found: " + shapeDir);
 end
 if ~exist(outDir, 'dir'); mkdir(outDir); end
 if ~exist(modelsDir, 'dir'); mkdir(modelsDir); end
-if ~exist(tablesDir, 'dir'); mkdir(tablesDir); end
+if ~exist(logDir, 'dir'); mkdir(logDir); end
+ensure_error_log_header(errorLogCsv);
 
 files = dir(fullfile(shapeDir, '*_contour_xy.csv'));
 if isempty(files)
@@ -26,10 +28,9 @@ if isempty(files)
 end
 
 startIndex = 1;
-maxCount = 9; % 0 = all
-buildOnly = true;
-doCompute = false;
-doExportTable = false;
+maxCount = 0; % 0 = all
+buildOnly = false;
+doCompute = true;
 
 if maxCount <= 0
     endIndex = numel(files);
@@ -43,56 +44,91 @@ ModelUtil.showProgress(true);
 for i = startIndex:endIndex
     shapeFile = fullfile(shapeDir, files(i).name);
     [~, baseName, ~] = fileparts(files(i).name);
+    exportStem = regexprep(baseName, '_contour_xy$', '');
     fprintf("=== [%d/%d] %s ===\n", i, endIndex, baseName);
 
     assignin('base', 'shape_file', shapeFile);
+    assignin('base', 'shape_export_name', exportStem);
 
-    modelTag = ['m' num2str(i)];
-    model = ModelUtil.create(modelTag);
-    model.modelPath(outDir);
-    model.label(['snake_' baseName]);
+    try
+        modelTag = ['m' num2str(i)];
+        model = ModelUtil.create(modelTag);
+        model.modelPath(outDir);
+        model.label(['snake_' baseName]);
 
-    model = set_params_01(model);
-    model = build_geom_02(model);
-    if ~buildOnly
-        model = set_material_03(model);
-        model = set_physics_04(model);
-        model = set_mesh_05(model);
-        model = set_study_06(model);
-    end
+        model = set_params_01(model);
+        model = build_geom_02(model);
 
-    if doCompute && ~buildOnly
+        % Skip output when perturbation is marked as invalid/non-contact.
+        isSkipped = false;
+        skipReason = '';
         try
-            model.batch('p2').run('compute');
+            isSkipped = evalin('base', 'exist(''shape_skip'',''var'') && shape_skip');
         catch
-            model.study('std1').run;
         end
-    end
-
-    if ~buildOnly
-        model = set_results_07(model);
-    end
-
-    if doExportTable && ~buildOnly
-        try
+        if isSkipped
             try
-                model.result.numerical('gev1').setResult;
+                skipReason = evalin('base', 'shape_skip_reason');
             catch
-                model.result.numerical('gev1').run;
             end
-            T = mphtable(model, 'tbl1');
-            outCsv = fullfile(tablesDir, [baseName '_tbl1.csv']);
-            if isempty(T) || ~isfield(T, 'data') || isempty(T.data)
-                writematrix([], outCsv);
-            else
-                writematrix(T.data, outCsv);
-            end
-        catch ME
-            warning("table export failed for %s: %s", baseName, ME.message);
+            fprintf("SKIP model output for %s (reason=%s)\n", baseName, char(skipReason));
+            continue;
         end
-    end
 
-    mphsave(model, fullfile(modelsDir, [baseName '.mph']));
+        if ~buildOnly
+            model = set_material_03(model);
+            model = set_physics_04(model);
+            model = set_mesh_05(model);
+            model = set_study_06(model);
+        end
+
+        if doCompute && ~buildOnly
+            try
+                model.batch('p2').run('compute');
+            catch MEComp
+                warning("batch compute failed for %s, fallback to study.run: %s", baseName, MEComp.message);
+                model.study('std1').run;
+            end
+        end
+
+        if ~buildOnly
+            model = set_results_07(model);
+        end
+
+        mphsave(model, fullfile(modelsDir, [baseName '.mph']));
+    catch ME
+        fprintf(2, "ERROR on %s: %s\n", baseName, ME.message);
+        append_error_log(errorLogCsv, i, baseName, shapeFile, ME);
+        continue;
+    end
 end
 
 disp("Batch finished.");
+
+function ensure_error_log_header(logPath)
+if isfile(logPath)
+    return;
+end
+fid = fopen(logPath, 'w');
+if fid < 0
+    return;
+end
+cleanupObj = onCleanup(@() fclose(fid));
+fprintf(fid, 'timestamp,index,shape_name,shape_file,error_id,error_message\n');
+end
+
+function append_error_log(logPath, idx, shapeName, shapeFile, ME)
+fid = fopen(logPath, 'a');
+if fid < 0
+    return;
+end
+cleanupObj = onCleanup(@() fclose(fid));
+ts = datestr(now, 'yyyy-mm-dd HH:MM:SS');
+msg = char(string(ME.message));
+msg = strrep(msg, '"', '""');
+sid = char(string(ME.identifier));
+sid = strrep(sid, '"', '""');
+sname = strrep(char(string(shapeName)), '"', '""');
+sfile = strrep(char(string(shapeFile)), '"', '""');
+fprintf(fid, '%s,%d,"%s","%s","%s","%s"\n', ts, idx, sname, sfile, sid, msg);
+end
