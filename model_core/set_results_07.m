@@ -90,8 +90,15 @@ try
     model.result.create('pg2', 'PlotGroup1D');
     model.result('pg2').set('data', 'dset2');
     model.result('pg2').label('Band diagram');
+    model.result('pg2').set('xlabel', 'k');
+    model.result('pg2').set('ylabel', 'Frequency (Hz)');
+    model.result('pg2').set('showlegends', false);
     model.result('pg2').create('glob1', 'Global');
-    model.result('pg2').feature('glob1').set('expr', 'solid.freq');
+    model.result('pg2').feature('glob1').set('data', 'dset2');
+    model.result('pg2').feature('glob1').set('expr', 'freq');
+    model.result('pg2').feature('glob1').set('unit', 'Hz');
+    model.result('pg2').feature('glob1').set('xdata', 'expr');
+    model.result('pg2').feature('glob1').set('xdataexpr', 'k');
 catch
 end
 

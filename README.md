@@ -51,7 +51,9 @@ run('run_shape_batch.m');
 - Non-contact discrete perturbation samples are skipped.
 - Skipped samples are recorded in `data/shape_batch/perturb_skip_log.csv`.
 - Runtime failures are recorded in `data/shape_batch/logs/run_shape_batch_errors.csv` and batch continues.
-- Valid model files are saved to `data/shape_batch/models/`.
+- `saveModel` in `runners/run_shape_batch.m` controls whether `.mph` files are kept.
+- When `saveModel = true`, valid model files are saved to `data/shape_batch/models/`.
+- When `saveModel = false`, after CSV export the same-name `.mph` file is deleted (if present) to save storage.
 - `tbl1` CSV is exported to `data/shape_batch/tbl1_exports/`.
 - `tbl1` file name follows shape stem, e.g. `ep1084_step120_tbl1.csv`.
 

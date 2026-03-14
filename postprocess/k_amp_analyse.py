@@ -1,143 +1,264 @@
-import os
+﻿from __future__ import annotations
+
+from dataclasses import dataclass
+from pathlib import Path
+from typing import Iterable
+
 import numpy as np
 import pandas as pd
-import matplotlib.pyplot as plt
 
-# ========== 1) 读入 ==========
-CSV_PATH = "D:\\graduation_project\\model\\tbl1_exports\\tbl1_20260125_204217874.csv"   # <- 改成你的路径/文件名
-OUT_DIR = "post_out"
 
-os.makedirs(OUT_DIR, exist_ok=True)
-os.makedirs(os.path.join(OUT_DIR, "bands_by_amp"), exist_ok=True)
-os.makedirs(os.path.join(OUT_DIR, "plots"), exist_ok=True)
+@dataclass(frozen=True)
+class Config:
+    tbl1_dir: Path
+    out_dir: Path
+    export_band_tables: bool = True
 
-# 你的 csv 没表头，且可能有以 % 开头的注释行
-df = pd.read_csv(
-    CSV_PATH,
-    header=None,
-    comment="%",
-    names=["k", "amp", "eigfreq", "freq"]
-)
 
-# ========== 2) 处理复数（把 i 换成 j），取实部 ==========
-def to_real(x):
+def project_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def build_default_config() -> Config:
+    root = project_root()
+    return Config(
+        tbl1_dir=root / "data" / "shape_batch" / "tbl1_exports",
+        out_dir=root / "data" / "post_out",
+        export_band_tables=True,
+    )
+
+
+def parse_real_value(x: object) -> float:
     if pd.isna(x):
         return np.nan
-    s = str(x).strip()
-    # COMSOL 常见格式：...E-14i 或 ...+...i
-    s = s.replace("i", "j")
+    s = str(x).strip().replace("i", "j")
     try:
-        z = complex(s)
-        return float(np.real(z))
-    except Exception:
-        # 有时就是纯实数
+        return float(np.real(complex(s)))
+    except ValueError:
         try:
             return float(s)
-        except Exception:
+        except ValueError:
             return np.nan
 
-df["freq_real"] = df["freq"].apply(to_real)
-df = df.dropna(subset=["k", "amp", "freq_real"]).copy()
 
-# 保险：转成 float
-df["k"] = df["k"].astype(float)
-df["amp"] = df["amp"].astype(float)
-df["freq_real"] = df["freq_real"].astype(float)
+def list_tbl1_files(tbl1_dir: Path) -> list[Path]:
+    return sorted(tbl1_dir.glob("*_tbl1.csv"))
 
-# ========== 3) 给每个 (amp,k) 内的频率排序并编号为 band_index ==========
-# band_index 从 1 开始：band1 最低频
-df = df.sort_values(["amp", "k", "freq_real"]).copy()
-df["band_index"] = df.groupby(["amp", "k"]).cumcount() + 1
 
-# 每个 (amp,k) 实际有多少条带（一般是你设置的“所需特征频率数”，比如 8）
-band_count = int(df["band_index"].max())
-print(f"[INFO] Detected band_count = {band_count}")
+def detect_param_name(csv_path: Path) -> str:
+    try:
+        with csv_path.open("r", encoding="utf-8", errors="ignore") as f:
+            for line in f:
+                line = line.strip()
+                if not line.startswith("%"):
+                    continue
+                raw = line.lstrip("%").strip()
+                fields = [part.strip() for part in raw.split(",")]
+                if len(fields) >= 2 and fields[0].lower() == "k":
+                    if fields[1]:
+                        return fields[1]
+    except OSError:
+        pass
+    return "param"
 
-# ========== 4) 生成每个 amp 的 band 表（k 为行，band1..bandM 为列） ==========
-bands = (
-    df.pivot_table(index=["amp", "k"], columns="band_index", values="freq_real", aggfunc="min")
-    .reset_index()
-    .sort_values(["amp", "k"])
-)
 
-# 统一列名：band1...bandM
-bands.columns = ["amp", "k"] + [f"band{int(c)}" for c in bands.columns[2:]]
+def model_name_from_path(csv_path: Path) -> str:
+    stem = csv_path.stem
+    if stem.endswith("_tbl1"):
+        return stem[:-5]
+    return stem
 
-# ========== 5) 计算带隙 + 画图 ==========
-summary_rows = []
 
-for amp_val, g in bands.groupby("amp"):
-    g = g.sort_values("k").reset_index(drop=True)
+def load_tbl1_data(csv_path: Path, param_name: str) -> pd.DataFrame:
+    df = pd.read_csv(
+        csv_path,
+        header=None,
+        comment="%",
+        names=["k", param_name, "eigfreq", "freq"],
+    )
 
-    band_cols = [c for c in g.columns if c.startswith("band")]
-    M = len(band_cols)
-    if M < 2:
-        continue
+    df["k"] = pd.to_numeric(df["k"], errors="coerce")
+    df[param_name] = pd.to_numeric(df[param_name], errors="coerce")
+    df["freq_real"] = df["freq"].apply(parse_real_value)
 
-    # --- 画能带图 ---
-    plt.figure()
-    for c in band_cols:
-        plt.plot(g["k"].values, g[c].values)
-    plt.xlabel("k")
-    plt.ylabel("Frequency (Hz)")
-    plt.title(f"Band structure (amp={amp_val:g})")
-    plt.grid(True, alpha=0.3)
-    plt.tight_layout()
-    plt.savefig(os.path.join(OUT_DIR, "plots", f"bands_amp_{amp_val:g}.png"), dpi=200)
-    plt.close()
+    df = df.dropna(subset=["k", param_name, "freq_real"]).copy()
+    if df.empty:
+        return df
 
-    # --- 计算相邻带隙 ---
-    # gap_j = min(band_{j+1}) - max(band_j)
-    gaps = []
-    for j in range(1, M):
-        lower = g[f"band{j}"].values
-        upper = g[f"band{j+1}"].values
+    df = df.sort_values([param_name, "k", "freq_real"]).copy()
+    df["band_index"] = df.groupby([param_name, "k"]).cumcount() + 1
+    return df
+
+
+def build_band_table(df: pd.DataFrame, param_name: str) -> pd.DataFrame:
+    bands = (
+        df.pivot_table(
+            index=[param_name, "k"],
+            columns="band_index",
+            values="freq_real",
+            aggfunc="min",
+        )
+        .reset_index()
+        .sort_values([param_name, "k"])
+    )
+    bands.columns = [param_name, "k"] + [f"band{int(c)}" for c in bands.columns[2:]]
+    return bands
+
+
+def iter_gap_candidates(group: pd.DataFrame) -> Iterable[tuple[int, float, float, float]]:
+    band_cols = [c for c in group.columns if c.startswith("band")]
+    for idx in range(1, len(band_cols)):
+        lower = group[f"band{idx}"].to_numpy(dtype=float)
+        upper = group[f"band{idx + 1}"].to_numpy(dtype=float)
         if np.all(np.isnan(lower)) or np.all(np.isnan(upper)):
             continue
-        lower_max = np.nanmax(lower)
-        upper_min = np.nanmin(upper)
+        lower_max = float(np.nanmax(lower))
+        upper_min = float(np.nanmin(upper))
         gap = upper_min - lower_max
-        gaps.append((j, gap, lower_max, upper_min))
+        yield idx, gap, lower_max, upper_min
 
-    # 正带隙（>0）才算 bandgap
-    pos_gaps = [t for t in gaps if t[1] > 0]
 
-    # 保存该 amp 的 band 表
-    g.to_csv(os.path.join(OUT_DIR, "bands_by_amp", f"bands_amp_{amp_val:g}.csv"), index=False)
-
-    if not pos_gaps:
-        summary_rows.append({
-            "amp": amp_val,
+def compute_case_summary(
+    model_name: str,
+    param_name: str,
+    param_value: float,
+    group: pd.DataFrame,
+) -> dict[str, object]:
+    positive_gaps = [row for row in iter_gap_candidates(group) if row[1] > 0]
+    if not positive_gaps:
+        return {
+            "model": model_name,
+            "param_name": param_name,
+            "param_value": param_value,
             "has_gap": False,
             "max_gap_Hz": 0.0,
             "gap_between_bands": "",
             "gap_lower_edge_Hz": np.nan,
             "gap_upper_edge_Hz": np.nan,
             "gap_center_Hz": np.nan,
-            "relative_gap": np.nan
-        })
-        continue
+            "relative_gap": np.nan,
+        }
 
-    # 取最大带隙
-    j_best, gap_best, lower_edge, upper_edge = max(pos_gaps, key=lambda x: x[1])
+    band_idx, gap, lower_edge, upper_edge = max(positive_gaps, key=lambda x: x[1])
     center = 0.5 * (lower_edge + upper_edge)
-    rel_gap = gap_best / center if center != 0 else np.nan
+    rel_gap = gap / center if center != 0 else np.nan
 
-    summary_rows.append({
-        "amp": amp_val,
+    return {
+        "model": model_name,
+        "param_name": param_name,
+        "param_value": param_value,
         "has_gap": True,
-        "max_gap_Hz": gap_best,
-        "gap_between_bands": f"{j_best} - {j_best+1}",
+        "max_gap_Hz": gap,
+        "gap_between_bands": f"{band_idx}-{band_idx + 1}",
         "gap_lower_edge_Hz": lower_edge,
         "gap_upper_edge_Hz": upper_edge,
         "gap_center_Hz": center,
-        "relative_gap": rel_gap
-    })
+        "relative_gap": rel_gap,
+    }
 
-summary = pd.DataFrame(summary_rows).sort_values("amp")
-summary.to_csv(os.path.join(OUT_DIR, "bandgap_summary.csv"), index=False)
 
-print("[DONE] Outputs written to:", OUT_DIR)
-print(" - bandgap_summary.csv")
-print(" - bands_by_amp/*.csv")
-print(" - plots/*.png")
+def analyze_one_model(
+    csv_path: Path,
+    out_bands_dir: Path,
+    export_band_tables: bool,
+) -> list[dict[str, object]]:
+    model_name = model_name_from_path(csv_path)
+    param_name = detect_param_name(csv_path)
+    df = load_tbl1_data(csv_path, param_name)
+    if df.empty:
+        return []
+
+    bands = build_band_table(df, param_name)
+    results: list[dict[str, object]] = []
+
+    for param_value, group in bands.groupby(param_name):
+        group = group.sort_values("k").reset_index(drop=True)
+        results.append(compute_case_summary(model_name, param_name, float(param_value), group))
+
+        if export_band_tables:
+            case_name = f"{model_name}_{param_name}_{param_value:g}".replace(".", "p")
+            group.to_csv(out_bands_dir / f"bands_{case_name}.csv", index=False)
+
+    return results
+
+
+def summarize_by_model(case_df: pd.DataFrame) -> pd.DataFrame:
+    if case_df.empty:
+        return case_df
+    idx = case_df.groupby("model")["max_gap_Hz"].idxmax()
+    model_df = case_df.loc[idx].sort_values("max_gap_Hz", ascending=False).reset_index(drop=True)
+    return model_df
+
+
+def save_outputs(case_df: pd.DataFrame, model_df: pd.DataFrame, out_dir: Path) -> None:
+    case_path = out_dir / "bandgap_by_case.csv"
+    model_path = out_dir / "bandgap_by_model.csv"
+    case_df.to_csv(case_path, index=False)
+    model_df.to_csv(model_path, index=False)
+
+    best_path = out_dir / "best_model.txt"
+    if model_df.empty:
+        best_path.write_text("No valid model with gap data.\n", encoding="utf-8")
+        return
+
+    best = model_df.iloc[0]
+    pos_df = model_df[model_df["max_gap_Hz"] > 0]
+    best_pos = pos_df.iloc[0] if not pos_df.empty else None
+    best_text = (
+        f"best_model={best['model']}\n"
+        f"max_gap_Hz={best['max_gap_Hz']:.12g}\n"
+        f"param_name={best['param_name']}\n"
+        f"param_value={best['param_value']:.12g}\n"
+        f"gap_between_bands={best['gap_between_bands']}\n"
+    )
+    if best_pos is None:
+        best_text += "best_positive_model=\nbest_positive_gap_Hz=0\n"
+    else:
+        best_text += (
+            f"best_positive_model={best_pos['model']}\n"
+            f"best_positive_gap_Hz={best_pos['max_gap_Hz']:.12g}\n"
+            f"best_positive_param_name={best_pos['param_name']}\n"
+            f"best_positive_param_value={best_pos['param_value']:.12g}\n"
+        )
+    best_path.write_text(best_text, encoding="utf-8")
+
+
+def run(config: Config) -> None:
+    if not config.tbl1_dir.is_dir():
+        raise FileNotFoundError(f"tbl1 directory not found: {config.tbl1_dir}")
+
+    config.out_dir.mkdir(parents=True, exist_ok=True)
+    out_bands_dir = config.out_dir / "bands_by_case"
+    out_bands_dir.mkdir(parents=True, exist_ok=True)
+
+    tbl1_files = list_tbl1_files(config.tbl1_dir)
+    if not tbl1_files:
+        raise FileNotFoundError(f"No *_tbl1.csv found in: {config.tbl1_dir}")
+
+    all_rows: list[dict[str, object]] = []
+    for csv_path in tbl1_files:
+        all_rows.extend(analyze_one_model(csv_path, out_bands_dir, config.export_band_tables))
+
+    case_df = pd.DataFrame(all_rows)
+    if case_df.empty:
+        raise RuntimeError("No valid numeric rows found in tbl1 csv files.")
+
+    case_df = case_df.sort_values(["model", "param_name", "param_value"]).reset_index(drop=True)
+    model_df = summarize_by_model(case_df)
+    save_outputs(case_df, model_df, config.out_dir)
+
+    best = model_df.iloc[0]
+    pos_df = model_df[model_df["max_gap_Hz"] > 0]
+    if pos_df.empty:
+        pos_msg = "none"
+    else:
+        bp = pos_df.iloc[0]
+        pos_msg = f"{bp['model']} ({bp['max_gap_Hz']:.6f} Hz)"
+    print(f"[DONE] cases: {len(case_df)}, models: {len(model_df)}")
+    print(f"[BEST] model={best['model']}, max_gap_Hz={best['max_gap_Hz']:.6f}, {best['param_name']}={best['param_value']:.6g}")
+    print(f"[BEST_POSITIVE] {pos_msg}")
+    print(f"[OUT] {config.out_dir}")
+
+
+if __name__ == "__main__":
+    run(build_default_config())

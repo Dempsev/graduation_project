@@ -28,9 +28,10 @@ if isempty(files)
 end
 
 startIndex = 1;
-maxCount = 0; % 0 = all
+maxCount = 1; % quick validation: rerun one case only; set back to 0 for all
 buildOnly = false;
 doCompute = true;
+saveModel = true; % true: save .mph; false: delete/skip .mph after tbl1 export to save disk
 
 if maxCount <= 0
     endIndex = numel(files);
@@ -95,7 +96,15 @@ for i = startIndex:endIndex
             model = set_results_07(model);
         end
 
-        mphsave(model, fullfile(modelsDir, [baseName '.mph']));
+        modelPath = fullfile(modelsDir, [baseName '.mph']);
+        if saveModel
+            mphsave(model, modelPath);
+        else
+            % Keep only exported CSV; remove stale/previous model file if present.
+            if isfile(modelPath)
+                delete(modelPath);
+            end
+        end
     catch ME
         fprintf(2, "ERROR on %s: %s\n", baseName, ME.message);
         append_error_log(errorLogCsv, i, baseName, shapeFile, ME);

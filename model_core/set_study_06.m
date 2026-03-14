@@ -26,9 +26,9 @@ end
 % Eigenfrequency settings
 try
     model.study('std1').feature('eig').set('geometricNonlinearity', true);
-    model.study('std1').feature('eig').set('neigs', 12);
+    model.study('std1').feature('eig').set('neigs', 8);
     model.study('std1').feature('eig').set('neigsactive', true);
-    model.study('std1').feature('eig').set('shift', '200[Hz]');
+    model.study('std1').feature('eig').set('filtereigdescription', {'Damped' 'natural' 'frequency'});
 catch
 end
 

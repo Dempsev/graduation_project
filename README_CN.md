@@ -51,7 +51,9 @@ run('run_shape_batch.m');
 - 与傅里叶边界不接触的离散扰动样本会被跳过。
 - 跳过记录写入：`data/shape_batch/perturb_skip_log.csv`。
 - 运行期错误写入：`data/shape_batch/logs/run_shape_batch_errors.csv`，并自动继续下一个样本。
-- 有效模型保存到：`data/shape_batch/models/`。
+- `runners/run_shape_batch.m` 里的 `saveModel` 控制是否保留 `.mph` 模型。
+- `saveModel = true` 时，有效模型保存到：`data/shape_batch/models/`。
+- `saveModel = false` 时，导出 CSV 后会删除同名 `.mph`（若存在），用于节约存储。
 - `tbl1` 仅输出到：`data/shape_batch/tbl1_exports/`。
 - `tbl1` 文件名使用形状名（例如 `ep1084_step120_tbl1.csv`），不再用时间戳。
 
