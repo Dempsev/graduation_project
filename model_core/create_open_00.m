@@ -47,6 +47,7 @@ model = set_mesh_05(model);
 
 % Run compute before results (ensure parametric solution exists)
 model = set_study_06(model);
+print_eigenfrequency_settings(model);
 model.batch('p2').run('compute');
 
 % Results (create after compute)
@@ -58,3 +59,20 @@ mphfile = fullfile(mpath, 'mother_rebuild.mph');
 mphsave(model, mphfile);
 fprintf('Saved full model: %s\n', mphfile);
 fprintf('tbl1 CSV export directory: %s\n', fullfile(mpath, 'tbl1_exports'));
+
+function print_eigenfrequency_settings(model)
+neigsValue = '<unavailable>';
+shiftValue = '<unavailable>';
+
+try
+    neigsValue = char(string(model.study('std1').feature('eig').getString('neigs')));
+catch
+end
+
+try
+    shiftValue = char(string(model.study('std1').feature('eig').getString('shift')));
+catch
+end
+
+fprintf('Eigenfrequency settings: neigs=%s, shift=%s\n', neigsValue, shiftValue);
+end

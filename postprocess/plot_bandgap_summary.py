@@ -58,11 +58,11 @@ def plot_bandgap_summary(case_df: pd.DataFrame, fig_dir: Path) -> None:
 
 
 def plot_band_diagrams(out_dir: Path) -> int:
-    bands_dir = out_dir / "bands_by_case"
+    bands_dir = out_dir / "case_band_tables"
     if not bands_dir.is_dir():
         return 0
 
-    band_fig_dir = out_dir / "plots" / "bands_by_case"
+    band_fig_dir = out_dir / "plots" / "case_band_diagrams"
     band_fig_dir.mkdir(parents=True, exist_ok=True)
 
     plotted = 0
@@ -95,7 +95,7 @@ def plot_band_diagrams(out_dir: Path) -> int:
 
 
 def main() -> None:
-    out_dir = project_root() / "data" / "post_out"
+    out_dir = project_root() / "data" / "postprocess_out"
     case_path = out_dir / "bandgap_by_case.csv"
     if not case_path.is_file():
         raise FileNotFoundError(f"summary file not found: {case_path}")

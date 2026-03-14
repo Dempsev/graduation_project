@@ -5,14 +5,15 @@ thisDir = fileparts(mfilename('fullpath'));
 rootDir = fileparts(thisDir);
 addpath(genpath(fullfile(rootDir, 'model_core')));
 
-shapeDir = fullfile(rootDir, 'data', 'shape_points');
-outDir = fullfile(rootDir, 'data', 'shape_batch');
+shapeDir = fullfile(rootDir, 'data', 'shape_contours');
+outDir = fullfile(rootDir, 'data', 'comsol_batch');
 modelsDir = fullfile(outDir, 'models');
 logDir = fullfile(outDir, 'logs');
 errorLogCsv = fullfile(logDir, 'run_shape_batch_errors.csv');
+tbl1Dir = fullfile(outDir, 'tbl1_exports');
 
 if ~exist(shapeDir, 'dir')
-    error("shape_points dir not found: " + shapeDir);
+    error("shape_contours dir not found: " + shapeDir);
 end
 if ~exist(outDir, 'dir'); mkdir(outDir); end
 if ~exist(modelsDir, 'dir'); mkdir(modelsDir); end
@@ -28,10 +29,13 @@ if isempty(files)
 end
 
 startIndex = 1;
-maxCount = 1; % quick validation: rerun one case only; set back to 0 for all
+maxCount = 8; % run 8 cases by default; set to 0 to process all available shapes
 buildOnly = false;
 doCompute = true;
 saveModel = true; % true: save .mph; false: delete/skip .mph after tbl1 export to save disk
+runPostprocess = true;
+plotLatestManual = true;
+pythonCmd = 'python';
 
 if maxCount <= 0
     endIndex = numel(files);
@@ -41,6 +45,7 @@ end
 
 ModelUtil.clear;
 ModelUtil.showProgress(true);
+exportedTbl1Paths = {};
 
 for i = startIndex:endIndex
     shapeFile = fullfile(shapeDir, files(i).name);
@@ -94,6 +99,10 @@ for i = startIndex:endIndex
 
         if ~buildOnly
             model = set_results_07(model);
+            tbl1Path = fullfile(tbl1Dir, [exportStem '_tbl1.csv']);
+            if isfile(tbl1Path)
+                exportedTbl1Paths{end+1} = tbl1Path; %#ok<AGROW>
+            end
         end
 
         modelPath = fullfile(modelsDir, [baseName '.mph']);
@@ -113,6 +122,12 @@ for i = startIndex:endIndex
 end
 
 disp("Batch finished.");
+fprintf("Processed range: startIndex=%d, endIndex=%d, requested=%d\n", startIndex, endIndex, endIndex - startIndex + 1);
+fprintf("tbl1 exports generated in this run: %d\n", numel(exportedTbl1Paths));
+
+if runPostprocess && ~buildOnly && doCompute
+    run_postprocess(rootDir, pythonCmd, exportedTbl1Paths, plotLatestManual);
+end
 
 function ensure_error_log_header(logPath)
 if isfile(logPath)
@@ -140,4 +155,39 @@ sid = strrep(sid, '"', '""');
 sname = strrep(char(string(shapeName)), '"', '""');
 sfile = strrep(char(string(shapeFile)), '"', '""');
 fprintf(fid, '%s,%d,"%s","%s","%s","%s"\n', ts, idx, sname, sfile, sid, msg);
+end
+
+function run_postprocess(rootDir, pythonCmd, exportedTbl1Paths, plotLatestManual)
+postDir = fullfile(rootDir, 'postprocess');
+analyzeCmd = sprintf('"%s" "%s"', pythonCmd, fullfile(postDir, 'analyze_bandgaps.py'));
+plotSummaryCmd = sprintf('"%s" "%s"', pythonCmd, fullfile(postDir, 'plot_bandgap_summary.py'));
+
+fprintf("Running postprocess: analyze_bandgaps.py\n");
+[statusAnalyze, outAnalyze] = system(analyzeCmd);
+fprintf("%s", outAnalyze);
+if statusAnalyze ~= 0
+    warning("postprocess analyze failed with exit code %d", statusAnalyze);
+    return;
+end
+
+fprintf("Running postprocess: plot_bandgap_summary.py\n");
+[statusPlot, outPlot] = system(plotSummaryCmd);
+fprintf("%s", outPlot);
+if statusPlot ~= 0
+    warning("postprocess plotting failed with exit code %d", statusPlot);
+    return;
+end
+
+if plotLatestManual && ~isempty(exportedTbl1Paths)
+    for i = 1:numel(exportedTbl1Paths)
+        tbl1Path = exportedTbl1Paths{i};
+        manualCmd = sprintf('"%s" "%s" "%s"', pythonCmd, fullfile(postDir, 'plot_tbl1_bands.py'), tbl1Path);
+        fprintf("Running postprocess: plot_tbl1_bands.py for %s\n", tbl1Path);
+        [statusManual, outManual] = system(manualCmd);
+        fprintf("%s", outManual);
+        if statusManual ~= 0
+            warning("manual band plot failed with exit code %d for %s", statusManual, tbl1Path);
+        end
+    end
+end
 end

@@ -57,7 +57,7 @@ catch
 end
 
 % Optional discrete perturbation (from preprocess CSV)
-shapeDir = fullfile('data', 'shape_points');
+shapeDir = fullfile('data', 'shape_contours');
 csvPath = get_shape_file(shapeDir);
 tagPrefix = 'dp1';
 ensure_perturb_skip_log();
@@ -293,7 +293,7 @@ end
 
 function append_perturb_skip_log(shapePath, reason, value)
 % Append skipped perturbation records for batch traceability.
-logPath = resolve_path(fullfile('data', 'shape_batch', 'perturb_skip_log.csv'));
+logPath = resolve_path(fullfile('data', 'comsol_batch', 'perturb_skip_log.csv'));
 prepare_perturb_skip_log_file(logPath);
 needHeader = ~isfile(logPath);
 fid = fopen(logPath, 'a');
@@ -311,7 +311,7 @@ end
 
 function ensure_perturb_skip_log()
 % Ensure skip log file exists so users can always find it.
-logPath = resolve_path(fullfile('data', 'shape_batch', 'perturb_skip_log.csv'));
+logPath = resolve_path(fullfile('data', 'comsol_batch', 'perturb_skip_log.csv'));
 prepare_perturb_skip_log_file(logPath);
 if ~isfile(logPath)
     fid = fopen(logPath, 'w');

@@ -15,9 +15,9 @@ def _find_project_root(start: str) -> str:
 PROJECT_ROOT = _find_project_root(os.path.dirname(__file__))
 DATA_DIR = os.path.join(PROJECT_ROOT, "data")
 
-SNAKE_STATES_DIR = os.path.join(DATA_DIR, "snake_states")
-SNAKE_CHECKPOINTS_DIR = os.path.join(DATA_DIR, "snake_checkpoints")
+SNAKE_STATES_DIR = os.path.join(DATA_DIR, "snake_state_matrices")
+SNAKE_CHECKPOINTS_DIR = os.path.join(DATA_DIR, "snake_run_checkpoints")
 SNAKE_CHECKPOINT_FILE = os.path.join(SNAKE_CHECKPOINTS_DIR, "checkpoint.json")
 
-SHAPE_POINTS_DIR = os.path.join(DATA_DIR, "shape_points")
-SHAPE_PREVIEWS_DIR = os.path.join(DATA_DIR, "shape_previews")
+SHAPE_POINTS_DIR = os.path.join(DATA_DIR, "shape_contours")
+SHAPE_PREVIEWS_DIR = os.path.join(DATA_DIR, "shape_contour_previews")

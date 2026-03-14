@@ -26,8 +26,13 @@ end
 % Eigenfrequency settings
 try
     model.study('std1').feature('eig').set('geometricNonlinearity', true);
-    model.study('std1').feature('eig').set('neigs', 8);
+    model.study('std1').feature('eig').set('neigs', 12);
     model.study('std1').feature('eig').set('neigsactive', true);
+    try
+        model.study('std1').feature('eig').set('shift', '200[Hz]');
+        model.study('std1').feature('eig').set('shiftactive', true);
+    catch
+    end
     model.study('std1').feature('eig').set('filtereigdescription', {'Damped' 'natural' 'frequency'});
 catch
 end
@@ -112,5 +117,51 @@ try
     model.batch('p2').feature('so1').set('psol', 'sol2');
     model.batch('p2').feature('so1').set('keeprom', true);
 catch
+end
+
+apply_eigen_solver_settings(model, 'sol1');
+apply_eigen_solver_settings(model, 'sol2');
+end
+
+function apply_eigen_solver_settings(model, solTag)
+try
+    sol = model.sol(solTag);
+catch
+    return;
+end
+
+try
+    topTags = cell(sol.feature.tags);
+catch
+    return;
+end
+
+for i = 1:numel(topTags)
+    apply_feature_settings_recursive(sol.feature(topTags{i}));
+end
+end
+
+function apply_feature_settings_recursive(featureNode)
+try
+    featureNode.set('neigs', 12);
+catch
+end
+try
+    featureNode.set('shift', '200[Hz]');
+catch
+end
+try
+    featureNode.set('shiftactive', true);
+catch
+end
+
+try
+    childTags = cell(featureNode.feature.tags);
+catch
+    return;
+end
+
+for i = 1:numel(childTags)
+    apply_feature_settings_recursive(featureNode.feature(childTags{i}));
 end
 end

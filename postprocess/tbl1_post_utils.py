@@ -91,9 +91,9 @@ def build_band_table(df: pd.DataFrame, param_name: str) -> pd.DataFrame:
 
 def infer_manual_plot_dir(csv_path: Path) -> Path:
     root = project_root()
-    default_out_dir = root / "data" / "post_out" / "manual_band_plots"
+    default_out_dir = root / "data" / "postprocess_out" / "manual_band_diagrams"
 
     if len(csv_path.parents) >= 3 and csv_path.parents[2].name == "data":
-        return csv_path.parents[2] / "post_out" / "manual_band_plots"
+        return csv_path.parents[2] / "postprocess_out" / "manual_band_diagrams"
 
     return default_out_dir

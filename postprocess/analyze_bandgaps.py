@@ -35,8 +35,8 @@ class Config:
 def build_default_config() -> Config:
     root = project_root()
     return Config(
-        tbl1_dir=root / "data" / "shape_batch" / "tbl1_exports",
-        out_dir=root / "data" / "post_out",
+        tbl1_dir=root / "data" / "comsol_batch" / "tbl1_exports",
+        out_dir=root / "data" / "postprocess_out",
         export_band_tables=True,
     )
 
@@ -159,7 +159,7 @@ def run(config: Config) -> None:
         raise FileNotFoundError(f"tbl1 directory not found: {config.tbl1_dir}")
 
     config.out_dir.mkdir(parents=True, exist_ok=True)
-    out_bands_dir = config.out_dir / "bands_by_case"
+    out_bands_dir = config.out_dir / "case_band_tables"
     out_bands_dir.mkdir(parents=True, exist_ok=True)
 
     tbl1_files = list_tbl1_files(config.tbl1_dir)
