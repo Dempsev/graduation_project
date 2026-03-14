@@ -28,6 +28,10 @@ coad/
   snake/
   preprocess/
   postprocess/
+    analyze_bandgaps.py
+    plot_bandgap_summary.py
+    plot_tbl1_bands.py
+    tbl1_post_utils.py
   data/
     shape_points/
     shape_batch/
@@ -60,3 +64,8 @@ run('run_shape_batch.m');
 ## Notes
 - Periodic boundary pairs are selected by rectangle position (left/right for `kx`, bottom/top for `ky`), not by fixed boundary IDs.
 - Legacy scripts are kept under `runners/legacy_run/` for reference.
+
+## Postprocess
+- `python postprocess/analyze_bandgaps.py`: analyze all `tbl1` exports and write summary CSV files plus per-case band tables.
+- `python postprocess/plot_bandgap_summary.py`: generate summary figures and band diagrams from `data/post_out/`.
+- `python postprocess/plot_tbl1_bands.py <tbl1.csv> [param_value]`: manually inspect one `tbl1` file and optionally plot one specific parameter slice.

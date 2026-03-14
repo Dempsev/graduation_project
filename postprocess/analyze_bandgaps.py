@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from dataclasses import dataclass
 from pathlib import Path
@@ -7,16 +7,29 @@ from typing import Iterable
 import numpy as np
 import pandas as pd
 
+try:
+    from .tbl1_post_utils import (
+        build_band_table,
+        list_tbl1_files,
+        load_tbl1_data,
+        model_name_from_path,
+        project_root,
+    )
+except ImportError:
+    from tbl1_post_utils import (
+        build_band_table,
+        list_tbl1_files,
+        load_tbl1_data,
+        model_name_from_path,
+        project_root,
+    )
+
 
 @dataclass(frozen=True)
 class Config:
     tbl1_dir: Path
     out_dir: Path
     export_band_tables: bool = True
-
-
-def project_root() -> Path:
-    return Path(__file__).resolve().parents[1]
 
 
 def build_default_config() -> Config:
@@ -28,83 +41,6 @@ def build_default_config() -> Config:
     )
 
 
-def parse_real_value(x: object) -> float:
-    if pd.isna(x):
-        return np.nan
-    s = str(x).strip().replace("i", "j")
-    try:
-        return float(np.real(complex(s)))
-    except ValueError:
-        try:
-            return float(s)
-        except ValueError:
-            return np.nan
-
-
-def list_tbl1_files(tbl1_dir: Path) -> list[Path]:
-    return sorted(tbl1_dir.glob("*_tbl1.csv"))
-
-
-def detect_param_name(csv_path: Path) -> str:
-    try:
-        with csv_path.open("r", encoding="utf-8", errors="ignore") as f:
-            for line in f:
-                line = line.strip()
-                if not line.startswith("%"):
-                    continue
-                raw = line.lstrip("%").strip()
-                fields = [part.strip() for part in raw.split(",")]
-                if len(fields) >= 2 and fields[0].lower() == "k":
-                    if fields[1]:
-                        return fields[1]
-    except OSError:
-        pass
-    return "param"
-
-
-def model_name_from_path(csv_path: Path) -> str:
-    stem = csv_path.stem
-    if stem.endswith("_tbl1"):
-        return stem[:-5]
-    return stem
-
-
-def load_tbl1_data(csv_path: Path, param_name: str) -> pd.DataFrame:
-    df = pd.read_csv(
-        csv_path,
-        header=None,
-        comment="%",
-        names=["k", param_name, "eigfreq", "freq"],
-    )
-
-    df["k"] = pd.to_numeric(df["k"], errors="coerce")
-    df[param_name] = pd.to_numeric(df[param_name], errors="coerce")
-    df["freq_real"] = df["freq"].apply(parse_real_value)
-
-    df = df.dropna(subset=["k", param_name, "freq_real"]).copy()
-    if df.empty:
-        return df
-
-    df = df.sort_values([param_name, "k", "freq_real"]).copy()
-    df["band_index"] = df.groupby([param_name, "k"]).cumcount() + 1
-    return df
-
-
-def build_band_table(df: pd.DataFrame, param_name: str) -> pd.DataFrame:
-    bands = (
-        df.pivot_table(
-            index=[param_name, "k"],
-            columns="band_index",
-            values="freq_real",
-            aggfunc="min",
-        )
-        .reset_index()
-        .sort_values([param_name, "k"])
-    )
-    bands.columns = [param_name, "k"] + [f"band{int(c)}" for c in bands.columns[2:]]
-    return bands
-
-
 def iter_gap_candidates(group: pd.DataFrame) -> Iterable[tuple[int, float, float, float]]:
     band_cols = [c for c in group.columns if c.startswith("band")]
     for idx in range(1, len(band_cols)):
@@ -114,8 +50,7 @@ def iter_gap_candidates(group: pd.DataFrame) -> Iterable[tuple[int, float, float
             continue
         lower_max = float(np.nanmax(lower))
         upper_min = float(np.nanmin(upper))
-        gap = upper_min - lower_max
-        yield idx, gap, lower_max, upper_min
+        yield idx, upper_min - lower_max, lower_max, upper_min
 
 
 def compute_case_summary(
@@ -139,9 +74,8 @@ def compute_case_summary(
             "relative_gap": np.nan,
         }
 
-    band_idx, gap, lower_edge, upper_edge = max(positive_gaps, key=lambda x: x[1])
+    band_idx, gap, lower_edge, upper_edge = max(positive_gaps, key=lambda row: row[1])
     center = 0.5 * (lower_edge + upper_edge)
-    rel_gap = gap / center if center != 0 else np.nan
 
     return {
         "model": model_name,
@@ -153,7 +87,7 @@ def compute_case_summary(
         "gap_lower_edge_Hz": lower_edge,
         "gap_upper_edge_Hz": upper_edge,
         "gap_center_Hz": center,
-        "relative_gap": rel_gap,
+        "relative_gap": gap / center if center != 0 else np.nan,
     }
 
 
@@ -163,8 +97,7 @@ def analyze_one_model(
     export_band_tables: bool,
 ) -> list[dict[str, object]]:
     model_name = model_name_from_path(csv_path)
-    param_name = detect_param_name(csv_path)
-    df = load_tbl1_data(csv_path, param_name)
+    df, param_name = load_tbl1_data(csv_path)
     if df.empty:
         return []
 
@@ -185,16 +118,14 @@ def analyze_one_model(
 def summarize_by_model(case_df: pd.DataFrame) -> pd.DataFrame:
     if case_df.empty:
         return case_df
+
     idx = case_df.groupby("model")["max_gap_Hz"].idxmax()
-    model_df = case_df.loc[idx].sort_values("max_gap_Hz", ascending=False).reset_index(drop=True)
-    return model_df
+    return case_df.loc[idx].sort_values("max_gap_Hz", ascending=False).reset_index(drop=True)
 
 
 def save_outputs(case_df: pd.DataFrame, model_df: pd.DataFrame, out_dir: Path) -> None:
-    case_path = out_dir / "bandgap_by_case.csv"
-    model_path = out_dir / "bandgap_by_model.csv"
-    case_df.to_csv(case_path, index=False)
-    model_df.to_csv(model_path, index=False)
+    case_df.to_csv(out_dir / "bandgap_by_case.csv", index=False)
+    model_df.to_csv(out_dir / "bandgap_by_model.csv", index=False)
 
     best_path = out_dir / "best_model.txt"
     if model_df.empty:
@@ -252,10 +183,16 @@ def run(config: Config) -> None:
     if pos_df.empty:
         pos_msg = "none"
     else:
-        bp = pos_df.iloc[0]
-        pos_msg = f"{bp['model']} ({bp['max_gap_Hz']:.6f} Hz)"
+        best_positive = pos_df.iloc[0]
+        pos_msg = f"{best_positive['model']} ({best_positive['max_gap_Hz']:.6f} Hz)"
+
     print(f"[DONE] cases: {len(case_df)}, models: {len(model_df)}")
-    print(f"[BEST] model={best['model']}, max_gap_Hz={best['max_gap_Hz']:.6f}, {best['param_name']}={best['param_value']:.6g}")
+    print(
+        "[BEST] "
+        f"model={best['model']}, "
+        f"max_gap_Hz={best['max_gap_Hz']:.6f}, "
+        f"{best['param_name']}={best['param_value']:.6g}"
+    )
     print(f"[BEST_POSITIVE] {pos_msg}")
     print(f"[OUT] {config.out_dir}")
 

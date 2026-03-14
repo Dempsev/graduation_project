@@ -28,6 +28,10 @@ coad/
   snake/
   preprocess/
   postprocess/
+    analyze_bandgaps.py
+    plot_bandgap_summary.py
+    plot_tbl1_bands.py
+    tbl1_post_utils.py
   data/
     shape_points/
     shape_batch/
@@ -60,3 +64,8 @@ run('run_shape_batch.m');
 ## 备注
 - 周期边界条件已改为按矩形位置自动选边：`kx` 选左右边，`ky` 选上下边，不再依赖固定边界编号。
 - 历史脚本已归档到 `runners/legacy_run/`。
+
+## 后处理脚本
+- `python postprocess/analyze_bandgaps.py`：扫描全部 `tbl1` 导出，生成带隙汇总 CSV 和每个 case 的 band 表。
+- `python postprocess/plot_bandgap_summary.py`：基于 `data/post_out/` 里的结果生成汇总图和 band 图。
+- `python postprocess/plot_tbl1_bands.py <tbl1.csv> [param_value]`：手动检查单个 `tbl1` 文件，并可额外绘制某个参数切片。
