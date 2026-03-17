@@ -57,20 +57,29 @@ catch
 end
 
 % Optional discrete perturbation (from preprocess CSV)
+useDiscretePerturbation = should_use_discrete_perturbation();
 shapeDir = fullfile('data', 'shape_contours');
-csvPath = get_shape_file(shapeDir);
+csvPath = '';
 tagPrefix = 'dp1';
 ensure_perturb_skip_log();
 set_perturb_skip_state(false, '', csvPath);
 
+if useDiscretePerturbation
+    csvPath = get_shape_file(shapeDir);
+else
+    set_perturb_skip_state(false, 'disabled', '');
+end
+
 baseSolidTag = 'csol1';
 dpOk = false;
 dpSolidTag = '';
-try
-    [model, dpSolidTag, dpOk] = add_discrete_perturbation( ...
-        model, csvPath, tagPrefix);
-catch ME
-    warning('build_geom_02:DiscretePerturbation', 'Discrete perturbation skipped: %s', ME.message);
+if useDiscretePerturbation
+    try
+        [model, dpSolidTag, dpOk] = add_discrete_perturbation( ...
+            model, csvPath, tagPrefix);
+    catch ME
+        warning('build_geom_02:DiscretePerturbation', 'Discrete perturbation skipped: %s', ME.message);
+    end
 end
 
 % Union defect with main boundary (if any)
@@ -446,6 +455,25 @@ if isempty(s) && ~isempty(baseDir)
         names = sort({files.name});
         s = fullfile(baseDir, names{1});
     end
+end
+end
+
+function tf = should_use_discrete_perturbation()
+% Allow runners to disable the discrete shape layer for pure Fourier studies.
+tf = true;
+try
+    if evalin('base', 'exist(''use_discrete_perturbation'',''var'')')
+        v = evalin('base', 'use_discrete_perturbation');
+        if islogical(v) || isnumeric(v)
+            tf = logical(v);
+            return;
+        end
+        if ischar(v) || isstring(v)
+            s = lower(strtrim(char(string(v))));
+            tf = any(strcmp(s, {'1', 'true', 'yes', 'y', 'on'}));
+        end
+    end
+catch
 end
 end
 

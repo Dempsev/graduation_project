@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Iterable
@@ -29,6 +30,7 @@ except ImportError:
 class Config:
     tbl1_dir: Path
     out_dir: Path
+    manifest_path: Path | None = None
     export_band_tables: bool = True
 
 
@@ -37,6 +39,7 @@ def build_default_config() -> Config:
     return Config(
         tbl1_dir=root / "data" / "comsol_batch" / "tbl1_exports",
         out_dir=root / "data" / "postprocess_out",
+        manifest_path=None,
         export_band_tables=True,
     )
 
@@ -109,7 +112,11 @@ def analyze_one_model(
         results.append(compute_case_summary(model_name, param_name, float(param_value), group))
 
         if export_band_tables:
-            case_name = f"{model_name}_{param_name}_{param_value:g}".replace(".", "p")
+            if group[param_name].nunique() == 1 and np.isclose(float(param_value), 0.0):
+                case_name = model_name
+            else:
+                case_name = f"{model_name}_{param_name}_{param_value:g}"
+            case_name = case_name.replace(".", "p")
             group.to_csv(out_bands_dir / f"bands_{case_name}.csv", index=False)
 
     return results
@@ -121,6 +128,33 @@ def summarize_by_model(case_df: pd.DataFrame) -> pd.DataFrame:
 
     idx = case_df.groupby("model")["max_gap_Hz"].idxmax()
     return case_df.loc[idx].sort_values("max_gap_Hz", ascending=False).reset_index(drop=True)
+
+
+def load_manifest(manifest_path: Path | None, tbl1_dir: Path) -> pd.DataFrame | None:
+    candidates: list[Path] = []
+    if manifest_path is not None:
+        candidates.append(manifest_path)
+    candidates.append(tbl1_dir.parent / "case_manifest.csv")
+
+    for candidate in candidates:
+        if candidate.is_file():
+            df = pd.read_csv(candidate)
+            if "case_id" not in df.columns:
+                raise ValueError(f"manifest missing required column 'case_id': {candidate}")
+            out = df.copy()
+            out["case_id"] = out["case_id"].astype(str)
+            return out
+
+    return None
+
+
+def merge_manifest(case_df: pd.DataFrame, model_df: pd.DataFrame, manifest_df: pd.DataFrame | None) -> tuple[pd.DataFrame, pd.DataFrame]:
+    if manifest_df is None:
+        return case_df, model_df
+
+    case_merged = case_df.merge(manifest_df, left_on="model", right_on="case_id", how="left")
+    model_merged = model_df.merge(manifest_df, left_on="model", right_on="case_id", how="left")
+    return case_merged, model_merged
 
 
 def save_outputs(case_df: pd.DataFrame, model_df: pd.DataFrame, out_dir: Path) -> None:
@@ -176,6 +210,8 @@ def run(config: Config) -> None:
 
     case_df = case_df.sort_values(["model", "param_name", "param_value"]).reset_index(drop=True)
     model_df = summarize_by_model(case_df)
+    manifest_df = load_manifest(config.manifest_path, config.tbl1_dir)
+    case_df, model_df = merge_manifest(case_df, model_df, manifest_df)
     save_outputs(case_df, model_df, config.out_dir)
 
     best = model_df.iloc[0]
@@ -197,5 +233,22 @@ def run(config: Config) -> None:
     print(f"[OUT] {config.out_dir}")
 
 
+def parse_args() -> Config:
+    parser = argparse.ArgumentParser(description="Analyze COMSOL tbl1 exports and summarize bandgaps.")
+    default = build_default_config()
+    parser.add_argument("--tbl1-dir", type=Path, default=default.tbl1_dir)
+    parser.add_argument("--out-dir", type=Path, default=default.out_dir)
+    parser.add_argument("--manifest", type=Path, default=None)
+    parser.add_argument("--no-band-tables", action="store_true", help="Skip writing per-case band tables.")
+    args = parser.parse_args()
+
+    return Config(
+        tbl1_dir=args.tbl1_dir.resolve(),
+        out_dir=args.out_dir.resolve(),
+        manifest_path=args.manifest.resolve() if args.manifest is not None else None,
+        export_band_tables=not args.no_band_tables,
+    )
+
+
 if __name__ == "__main__":
-    run(build_default_config())
+    run(parse_args())

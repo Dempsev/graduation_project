@@ -29,7 +29,7 @@ try
     model.result.numerical.create('gev1', 'EvalGlobal');
     model.result.numerical('gev1').set('data', 'dset2');
     model.result.numerical('gev1').set('table', 'tbl1');
-    model.result.numerical('gev1').set('expr', 'freq');
+    model.result.numerical('gev1').set('expr', 'solid.freq');
     model.result.numerical('gev1').set('unit', 'Hz');
     model.result.numerical('gev1').set('tablecols', 'data');
     model.result.numerical('gev1').set('looplevelinput', {'all' 'all'});
@@ -95,7 +95,7 @@ try
     model.result('pg2').set('showlegends', false);
     model.result('pg2').create('glob1', 'Global');
     model.result('pg2').feature('glob1').set('data', 'dset2');
-    model.result('pg2').feature('glob1').set('expr', 'freq');
+    model.result('pg2').feature('glob1').set('expr', 'solid.freq');
     model.result('pg2').feature('glob1').set('unit', 'Hz');
     model.result('pg2').feature('glob1').set('xdata', 'expr');
     model.result('pg2').feature('glob1').set('xdataexpr', 'k');

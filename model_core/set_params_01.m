@@ -58,4 +58,77 @@ catch
     model.param.set('a5', '0.03');
     model.param.set('b5', '0.01');
 end
+
+model = apply_base_param_overrides(model);
+end
+
+function model = apply_base_param_overrides(model)
+% Allow runners to override Fourier-related parameters from base workspace.
+overrides = get_base_struct('fourier_param_overrides');
+if isempty(overrides)
+    return;
+end
+
+names = fieldnames(overrides);
+for i = 1:numel(names)
+    name = char(names{i});
+    value = format_param_value(overrides.(name));
+    if isempty(name) || isempty(value)
+        continue;
+    end
+
+    groupTag = resolve_param_group(name);
+    if ~isempty(groupTag)
+        try
+            model.param.group(groupTag).set(name, value);
+        catch
+        end
+    end
+
+    try
+        model.param.set(name, value);
+    catch
+    end
+end
+end
+
+function s = get_base_struct(varName)
+s = struct();
+try
+    if evalin('base', sprintf('exist(''%s'',''var'')', varName))
+        candidate = evalin('base', varName);
+        if isstruct(candidate)
+            s = candidate;
+        end
+    end
+catch
+end
+end
+
+function groupTag = resolve_param_group(name)
+groupTag = '';
+par1 = {'a', 'N', 'k', 'kx', 'ky'};
+if any(strcmp(name, par1))
+    groupTag = 'par1';
+    return;
+end
+
+par2 = {'r0', 'n', 'phi', 'amp', 'a1', 'b1', 'a2', 'b2', 'a3', 'b3', 'a4', 'b4', 'a5', 'b5'};
+if any(strcmp(name, par2))
+    groupTag = 'par2';
+end
+end
+
+function value = format_param_value(raw)
+value = '';
+if isempty(raw)
+    return;
+end
+if isstring(raw) || ischar(raw)
+    value = char(string(raw));
+    return;
+end
+if isnumeric(raw) && isscalar(raw) && isfinite(raw)
+    value = sprintf('%.12g', raw);
+end
 end

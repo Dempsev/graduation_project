@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import argparse
 from pathlib import Path
 
 import matplotlib.pyplot as plt
@@ -26,6 +27,9 @@ def apply_k_path_ticks(ax: plt.Axes, x: pd.Series) -> None:
 
 def plot_bandgap_summary(case_df: pd.DataFrame, fig_dir: Path) -> None:
     for param_name, param_group in case_df.groupby("param_name"):
+        if param_group["param_value"].nunique() <= 1:
+            continue
+
         width_fig, width_ax = plt.subplots()
         edge_fig, edge_ax = plt.subplots()
 
@@ -55,6 +59,54 @@ def plot_bandgap_summary(case_df: pd.DataFrame, fig_dir: Path) -> None:
         edge_fig.tight_layout()
         edge_fig.savefig(fig_dir / f"bandgap_edges_vs_{param_name}.png", dpi=300)
         plt.close(edge_fig)
+
+
+def format_case_label(row: pd.Series) -> str:
+    label = str(row["model"])
+    params: list[str] = []
+    for name in ("shift_Hz", "neigs", "a1", "b1", "a2", "b2", "a3", "b3"):
+        if name not in row.index or pd.isna(row[name]):
+            continue
+        value = float(row[name])
+        if name not in {"shift_Hz", "neigs"} and abs(value) < 1e-12:
+            continue
+        params.append(f"{name}={value:g}")
+
+    if "notes" in row.index and pd.notna(row["notes"]):
+        note = str(row["notes"]).strip()
+        if note:
+            params.append(note)
+
+    if not params:
+        return label
+    return label + "\n" + "\n".join(params[:5])
+
+
+def plot_screening_case_summary(model_df: pd.DataFrame, fig_dir: Path) -> int:
+    if model_df.empty:
+        return 0
+
+    comparison_df = model_df.sort_values("max_gap_Hz", ascending=False).reset_index(drop=True)
+    labels = [format_case_label(row) for _, row in comparison_df.iterrows()]
+    x = list(range(len(comparison_df)))
+
+    fig, axes = plt.subplots(2, 1, figsize=(max(10, 1.05 * len(comparison_df)), 8), sharex=True)
+
+    axes[0].bar(x, comparison_df["max_gap_Hz"].fillna(0.0), color="#5B7DB1")
+    axes[0].set_ylabel("Bandgap width (Hz)")
+    axes[0].set_title("Best bandgap by case")
+    axes[0].grid(True, axis="y", alpha=0.3)
+
+    axes[1].bar(x, comparison_df["relative_gap"].fillna(0.0), color="#C97941")
+    axes[1].set_ylabel("Relative gap")
+    axes[1].set_title("Best relative gap by case")
+    axes[1].grid(True, axis="y", alpha=0.3)
+    axes[1].set_xticks(x, labels, rotation=25, ha="right")
+
+    fig.tight_layout()
+    fig.savefig(fig_dir / "screening_case_comparison.png", dpi=300)
+    plt.close(fig)
+    return len(comparison_df)
 
 
 def plot_band_diagrams(out_dir: Path) -> int:
@@ -95,22 +147,34 @@ def plot_band_diagrams(out_dir: Path) -> int:
 
 
 def main() -> None:
-    out_dir = project_root() / "data" / "postprocess_out"
+    parser = argparse.ArgumentParser(description="Plot bandgap summaries from postprocess outputs.")
+    parser.add_argument("--out-dir", type=Path, default=project_root() / "data" / "postprocess_out")
+    args = parser.parse_args()
+
+    out_dir = args.out_dir.resolve()
     case_path = out_dir / "bandgap_by_case.csv"
+    model_path = out_dir / "bandgap_by_model.csv"
     if not case_path.is_file():
         raise FileNotFoundError(f"summary file not found: {case_path}")
+    if not model_path.is_file():
+        raise FileNotFoundError(f"summary file not found: {model_path}")
 
     df = pd.read_csv(case_path)
+    model_df = pd.read_csv(model_path)
     if df.empty:
         raise RuntimeError("bandgap_by_case.csv is empty")
+    if model_df.empty:
+        raise RuntimeError("bandgap_by_model.csv is empty")
 
     fig_dir = out_dir / "plots"
     fig_dir.mkdir(parents=True, exist_ok=True)
 
     plot_bandgap_summary(df, fig_dir)
+    comparison_count = plot_screening_case_summary(model_df, fig_dir)
     band_count = plot_band_diagrams(out_dir)
 
     print(f"[DONE] summary plots written to: {fig_dir}")
+    print(f"[DONE] screening cases compared: {comparison_count}")
     print(f"[DONE] band diagrams written: {band_count}")
 
 

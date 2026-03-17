@@ -1,7 +1,7 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
+import argparse
 from pathlib import Path
-import sys
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -31,7 +31,10 @@ def plot_one_param_value(df: pd.DataFrame, param_name: str, param_value: float, 
     apply_k_path_ticks(ax)
     ax.set_xlabel("k")
     ax.set_ylabel("Frequency (Hz)")
-    ax.set_title(f"{out_path.stem}  {param_name}={param_value:g}")
+    if param_name == "case":
+        ax.set_title(out_path.stem)
+    else:
+        ax.set_title(f"{out_path.stem}  {param_name}={param_value:g}")
     ax.grid(True, alpha=0.25)
     fig.tight_layout()
     fig.savefig(out_path, dpi=240)
@@ -49,7 +52,10 @@ def plot_all_param_values(df: pd.DataFrame, param_name: str, out_path: Path) -> 
         for _, group in sub.groupby("band_index"):
             group = group.sort_values("k")
             ax.plot(group["k"], group["freq_real"], color="black", linewidth=0.9)
-        ax.set_title(f"{param_name}={param_value:g}")
+        if param_name == "case":
+            ax.set_title(out_path.stem)
+        else:
+            ax.set_title(f"{param_name}={param_value:g}")
         ax.set_ylabel("Frequency (Hz)")
         ax.grid(True, alpha=0.25)
 
@@ -60,18 +66,24 @@ def plot_all_param_values(df: pd.DataFrame, param_name: str, out_path: Path) -> 
     plt.close(fig)
 
 
-def main() -> None:
-    if len(sys.argv) < 2:
-        raise SystemExit("usage: python postprocess/plot_tbl1_bands.py <tbl1.csv> [param_value]")
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description="Plot one COMSOL tbl1 band diagram.")
+    parser.add_argument("csv_path", type=Path)
+    parser.add_argument("param_value", nargs="?", type=float, default=None)
+    parser.add_argument("--out-dir", type=Path, default=None)
+    return parser.parse_args()
 
-    csv_path = Path(sys.argv[1]).resolve()
-    param_value_filter = float(sys.argv[2]) if len(sys.argv) >= 3 else None
+
+def main() -> None:
+    args = parse_args()
+    csv_path = args.csv_path.resolve()
+    param_value_filter = args.param_value
 
     df, param_name = load_tbl1_data(csv_path)
     if df.empty:
         raise RuntimeError(f"no valid rows found in {csv_path}")
 
-    out_dir = infer_manual_plot_dir(csv_path)
+    out_dir = args.out_dir.resolve() if args.out_dir is not None else infer_manual_plot_dir(csv_path)
     out_dir.mkdir(parents=True, exist_ok=True)
 
     stem = model_name_from_path(csv_path)

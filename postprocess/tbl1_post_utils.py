@@ -28,7 +28,7 @@ def parse_real_value(x: object) -> float:
             return np.nan
 
 
-def detect_param_name(csv_path: Path) -> str:
+def detect_header_fields(csv_path: Path) -> list[str]:
     try:
         with csv_path.open("r", encoding="utf-8", errors="ignore") as f:
             for line in f:
@@ -37,12 +37,19 @@ def detect_param_name(csv_path: Path) -> str:
                     continue
                 raw = line.lstrip("%").strip()
                 fields = [part.strip() for part in raw.split(",")]
-                if len(fields) >= 2 and fields[0].lower() == "k" and fields[1]:
-                    return fields[1]
+                if fields and fields[0].lower() == "k":
+                    return fields
     except OSError:
         pass
 
-    return "param"
+    return []
+
+
+def detect_param_name(csv_path: Path) -> str:
+    fields = detect_header_fields(csv_path)
+    if len(fields) >= 4 and fields[1]:
+        return fields[1]
+    return "case"
 
 
 def model_name_from_path(csv_path: Path) -> str:
@@ -51,18 +58,29 @@ def model_name_from_path(csv_path: Path) -> str:
 
 
 def load_tbl1_data(csv_path: Path, param_name: str | None = None) -> tuple[pd.DataFrame, str]:
+    header_fields = detect_header_fields(csv_path)
+    has_param_column = len(header_fields) >= 4
     resolved_param_name = param_name or detect_param_name(csv_path)
+
+    if has_param_column:
+        column_names = ["k", resolved_param_name, "eigfreq", "freq"]
+    else:
+        column_names = ["k", "eigfreq", "freq"]
+
     df = pd.read_csv(
         csv_path,
         header=None,
         comment="%",
         sep=r"\s*,\s*|\s+",
         engine="python",
-        names=["k", resolved_param_name, "eigfreq", "freq"],
+        names=column_names,
     )
 
     df["k"] = pd.to_numeric(df["k"], errors="coerce")
-    df[resolved_param_name] = pd.to_numeric(df[resolved_param_name], errors="coerce")
+    if has_param_column:
+        df[resolved_param_name] = pd.to_numeric(df[resolved_param_name], errors="coerce")
+    else:
+        df[resolved_param_name] = 0.0
     df["freq_real"] = df["freq"].apply(parse_real_value)
 
     df = df.dropna(subset=["k", resolved_param_name, "freq_real"]).copy()
@@ -93,7 +111,8 @@ def infer_manual_plot_dir(csv_path: Path) -> Path:
     root = project_root()
     default_out_dir = root / "data" / "postprocess_out" / "manual_band_diagrams"
 
-    if len(csv_path.parents) >= 3 and csv_path.parents[2].name == "data":
-        return csv_path.parents[2] / "postprocess_out" / "manual_band_diagrams"
+    for parent in csv_path.parents:
+        if parent.name == "data":
+            return parent / "postprocess_out" / "manual_band_diagrams"
 
     return default_out_dir
