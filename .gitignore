@@ -1,15 +1,32 @@
-﻿# IDE/editor
+﻿# Editors / IDEs
 .vscode/
+.idea/
+*.swp
+*.swo
+*.tmp
+*.bak
+*.orig
+*.asv
+*~
 
 # Python
 __pycache__/
+.pytest_cache/
 *.pyc
 
-# Generated data/artifacts
+# MATLAB / COMSOL transient files
+*.mph.lock
+
+# Generated research artifacts
+# All simulation outputs, training tables, manifests, plots, and checkpoints
+# are written under data/ and should not be committed.
 data/
+
+# Legacy snake runtime logs
 snake/__pycache__/
 snake/logs/
 snake/logs/**
 
 # Archives
 *.zip
+*.7z

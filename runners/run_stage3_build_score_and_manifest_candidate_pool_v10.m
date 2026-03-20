@@ -1,0 +1,3 @@
+﻿run_stage3_build_candidate_pool_v10;
+run_stage3_run_seed_discovery_scoring_v10;
+run_stage3_build_validation_manifest_v10;

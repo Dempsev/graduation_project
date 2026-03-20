@@ -1,0 +1,3 @@
+run_stage3_build_candidate_pool_v3;
+run_stage3_run_cascade_surrogate_v3;
+run_stage3_build_validation_manifest_v3;

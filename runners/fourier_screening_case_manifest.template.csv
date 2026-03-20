@@ -1,0 +1,10 @@
+case_id,a1,a2,b2,enabled,shape_file,notes
+case01,0.18,0.14,-0.06,1,,baseline
+case02,0.10,0.14,-0.06,1,,a1_low
+case03,0.26,0.14,-0.06,1,,a1_high
+case04,0.18,0.06,-0.06,1,,a2_low
+case05,0.18,0.22,-0.06,1,,a2_high
+case06,0.18,0.14,-0.12,1,,b2_more_negative
+case07,0.18,0.14,0.00,1,,b2_near_zero
+case08,0.26,0.22,-0.12,1,,strong_coupling
+case09,0.10,0.06,0.00,1,,opposite_corner

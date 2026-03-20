@@ -1,0 +1,93 @@
+﻿function cfg = get_stage4_validation_config_v9()
+%GET_STAGE4_VALIDATION_CONFIG_V6 Config for targeted v6 COMSOL validation runs.
+
+thisDir = fileparts(mfilename('fullpath'));
+rootDir = fileparts(thisDir);
+baseCfg = get_stage2_harmonics_refine_config();
+
+cfg = baseCfg;
+cfg.validationId = 'stage4_validation_ab_v9';
+cfg.outDir = fullfile(rootDir, 'data', 'comsol_batch', 'stage4_validation_ab_v9');
+cfg.tbl1Dir = fullfile(cfg.outDir, 'tbl1_exports');
+cfg.modelsDir = fullfile(cfg.outDir, 'models');
+cfg.logsDir = fullfile(cfg.outDir, 'logs');
+cfg.plotDir = fullfile(cfg.outDir, 'plots');
+cfg.bandPlotDir = fullfile(cfg.plotDir, 'band_diagrams');
+
+validationDir = fullfile(rootDir, 'data', 'ml_runs', 'candidate_pool_seed_discovery_v9', 'validation_manifest_v9');
+cfg.validationDir = validationDir;
+cfg.validationManifestCsv = fullfile(validationDir, 'comsol_validation_manifest_v9.csv');
+cfg.validationSummaryJson = fullfile(validationDir, 'validation_manifest_summary.json');
+
+cfg.pointManifestCsv = fullfile(cfg.outDir, 'stage4_validation_point_manifest.csv');
+cfg.baselineByPointMat = fullfile(cfg.outDir, 'baseline_by_point.mat');
+cfg.baselineByPointCsv = fullfile(cfg.outDir, 'baseline_by_point.csv');
+cfg.resultsMat = fullfile(cfg.outDir, 'stage4_validation_results.mat');
+cfg.resultsCsv = fullfile(cfg.outDir, 'stage4_validation_results.csv');
+cfg.armSummaryCsv = fullfile(cfg.outDir, 'stage4_validation_arm_summary.csv');
+cfg.pointSummaryCsv = fullfile(cfg.outDir, 'stage4_validation_point_summary.csv');
+cfg.shapeSummaryCsv = fullfile(cfg.outDir, 'stage4_validation_shape_summary.csv');
+
+cfg.fourierId = cfg.validationId;
+cfg.saveModel = false;
+cfg.enableBandPlots = false;
+
+cfg.resultFieldOrder = { ...
+    'sample_id', 'validation_id', 'selection_source', 'selection_label', 'rank_within_source', 'rank_cascade', 'rank_surrogate', ...
+    'source_sample_id', ...
+    'seed_shape_id', 'seed_family', 'seed_step', 'seed_tier', 'seed_source', ...
+    'step_num', 'step_offset', 'step_distance', 'step_window', 'target_rule', 'preferred_direction', 'v5_reference_validation_id', 'is_seed_shape', ...
+    'v5_reference_gain_Hz', ...
+    'stage1_reference_sample_id', 'stage1_reference_fourier_id', 'stage1_reference_gap_Hz', 'stage1_reference_gap_gain_Hz', ...
+    'stage1_reference_contact_length', 'stage1_reference_candidate_tier', ...
+    'shape_id', 'shape_family', 'shape_role', 'candidate_id', 'main_id', 'point_id', ...
+    'pool_arm', 'point_strategy', 'family_prior_source', 'seed_prior_source', ...
+    'a1', 'a2', 'b1', 'b2', 'a3', 'b3', 'a4', 'b4', 'a5', 'b5', 'r0', ...
+    'shift', 'neigs', 'material_case', ...
+    'contact_prob', 'positive_prob', 'surrogate_pred_gap34_gain_Hz', 'class_score', 'cascade_score', ...
+    'contact_gate', 'positive_gate', 'reg_positive_gate', 'cascade_gate', ...
+    'geometry_valid', 'contact_valid', 'contact_length', 'n_domains', 'has_tiny_fragments', ...
+    'solve_success', ...
+    'gap34_Hz', 'gap34_rel', 'gap34_lower_edge_Hz', 'gap34_upper_edge_Hz', 'gap34_center_freq', ...
+    'ref_gap34_Hz', 'ref_gap34_rel', 'gap34_gain_Hz', 'gap34_gain_rel', ...
+    'max_gap_Hz', 'max_gap_rel', 'max_gap_lower_band', 'max_gap_upper_band', 'max_gap_center_freq', ...
+    'error_message' ...
+};
+
+manifestSig = file_signature(cfg.validationManifestCsv);
+summarySig = file_signature(cfg.validationSummaryJson);
+cfg.configSignature = strjoin({ ...
+    cfg.validationId, ...
+    sprintf('fixed_gap_band=%d', cfg.fixedGapBand), ...
+    sprintf('shift=%.12g', cfg.studyShiftHz), ...
+    sprintf('neigs=%d', cfg.studyNeigs), ...
+    cfg.materialCase, ...
+    ['manifest=' manifestSig], ...
+    ['summary=' summarySig] ...
+}, ';');
+
+ensure_dir(cfg.outDir);
+ensure_dir(cfg.tbl1Dir);
+ensure_dir(cfg.logsDir);
+ensure_dir(cfg.plotDir);
+if cfg.saveModel
+    ensure_dir(cfg.modelsDir);
+end
+end
+
+function ensure_dir(pathStr)
+if ~exist(pathStr, 'dir')
+    mkdir(pathStr);
+end
+end
+
+function sig = file_signature(pathStr)
+if ~isfile(pathStr)
+    sig = 'missing';
+    return;
+end
+info = dir(pathStr);
+sig = sprintf('%s|%d|%s', pathStr, info.bytes, info.date);
+end
+
+

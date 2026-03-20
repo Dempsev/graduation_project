@@ -1,0 +1,5 @@
+case_id,use_discrete_shape,shape_file,neigs,shift_Hz,a1,b1,a2,b2,a3,b3,enabled,notes
+overlay00_base,0,,20,200,0.45,0,0,0,0,0,1,pure_fourier_baseline
+overlay01_ep100_step18,1,ep100_step18_contour_xy.csv,20,200,0.45,0,0,0,0,0,1,baseline_plus_snake_ep100_step18
+overlay02_ep100_step39,1,ep100_step39_contour_xy.csv,20,200,0.45,0,0,0,0,0,1,baseline_plus_snake_ep100_step39
+overlay03_ep102_step12,1,ep102_step12_contour_xy.csv,20,200,0.45,0,0,0,0,0,1,baseline_plus_snake_ep102_step12

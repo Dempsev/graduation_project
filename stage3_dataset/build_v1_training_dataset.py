@@ -9,6 +9,7 @@ from typing import Dict, List, Tuple
 
 ROOT = Path(__file__).resolve().parents[1]
 OUT_DIR = ROOT / 'data' / 'ml_dataset' / 'v1'
+TASKS_DIR = OUT_DIR / 'tasks'
 FIXED_GAP_BAND = 3
 
 STAGES = [
@@ -54,34 +55,66 @@ STAGES = [
     },
 ]
 
+SURROGATE_CORE_STAGES = ['stage2', 'stage2_refine', 'stage2_harmonics', 'stage2_harmonics_refine']
+
 SHAPE_DIR = ROOT / 'data' / 'shape_contours'
 MASTER_CSV = OUT_DIR / 'master_dataset_v1.csv'
 REGRESSION_CSV = OUT_DIR / 'mlp_gap34_regression_v1.csv'
 STAGE_SUMMARY_CSV = OUT_DIR / 'dataset_stage_summary_v1.csv'
 DATASET_INFO_JSON = OUT_DIR / 'dataset_info_v1.json'
+CONTACT_TASK_CSV = TASKS_DIR / 'shape_screening_contact_cls_v1.csv'
+POSITIVE_TASK_CSV = TASKS_DIR / 'shape_screening_positive_cls_v1.csv'
+SURROGATE_CORE_TASK_CSV = TASKS_DIR / 'surrogate_regression_core_v1.csv'
+SURROGATE_SPECIALCASE_TASK_CSV = TASKS_DIR / 'surrogate_regression_specialcase_v1.csv'
+
+SHAPE_FEATURE_FIELDS = [
+    'shape_area', 'shape_perimeter', 'shape_bbox_width', 'shape_bbox_height', 'shape_bbox_aspect_ratio',
+    'shape_centroid_x', 'shape_centroid_y', 'shape_point_count',
+]
 
 MASTER_FIELDS = [
     'sample_id', 'source_stage', 'source_role', 'candidate_id', 'fourier_id', 'main_id', 'point_id',
-    'shape_id', 'shape_family',
+    'shape_id', 'shape_family', 'shape_role',
     'a1', 'a2', 'b1', 'b2', 'a3', 'b3', 'a4', 'b4', 'a5', 'b5', 'r0', 'shift', 'neigs',
     'geometry_valid', 'contact_valid', 'solve_success', 'contact_length', 'n_domains', 'has_tiny_fragments',
-    'shape_area', 'shape_perimeter', 'shape_bbox_width', 'shape_bbox_height', 'shape_bbox_aspect_ratio',
-    'shape_centroid_x', 'shape_centroid_y', 'shape_point_count',
+    *SHAPE_FEATURE_FIELDS,
     'stage_reported_gap_Hz', 'stage_reported_gap_rel', 'stage_reported_gap_lower_band', 'stage_reported_gap_upper_band',
     'gap34_Hz', 'gap34_rel', 'gap34_lower_edge_Hz', 'gap34_upper_edge_Hz', 'gap34_center_freq',
     'ref_gap34_Hz', 'ref_gap34_rel', 'gap34_gain_Hz', 'gap34_gain_rel',
     'max_gap_Hz', 'max_gap_rel', 'max_gap_lower_band', 'max_gap_upper_band', 'max_gap_center_freq',
-    'is_gap34_positive', 'is_gap34_gain_positive', 'is_training_ready', 'label_definition', 'error_message'
+    'is_gap34_positive', 'is_gap34_gain_positive', 'is_positive_shape', 'is_training_ready', 'label_definition', 'error_message',
 ]
 
 REGRESSION_FIELDS = [
-    'sample_id', 'source_stage', 'source_role', 'shape_id', 'shape_family', 'candidate_id', 'main_id', 'point_id',
+    'sample_id', 'source_stage', 'source_role', 'shape_id', 'shape_family', 'shape_role', 'candidate_id', 'main_id', 'point_id',
     'a1', 'a2', 'b1', 'b2', 'a3', 'b3', 'a4', 'b4', 'a5', 'b5', 'r0', 'shift', 'neigs',
-    'contact_length', 'n_domains', 'shape_area', 'shape_perimeter', 'shape_bbox_width', 'shape_bbox_height',
-    'shape_bbox_aspect_ratio', 'shape_centroid_x', 'shape_centroid_y', 'shape_point_count',
+    'contact_length', 'n_domains', *SHAPE_FEATURE_FIELDS,
     'gap34_Hz', 'gap34_rel', 'gap34_gain_Hz', 'gap34_gain_rel',
     'max_gap_Hz', 'max_gap_rel', 'max_gap_lower_band', 'max_gap_upper_band', 'max_gap_center_freq',
-    'is_gap34_positive', 'is_gap34_gain_positive'
+    'is_gap34_positive', 'is_gap34_gain_positive',
+]
+
+CONTACT_TASK_FIELDS = [
+    'sample_id', 'source_stage', 'shape_id', 'shape_family', 'shape_role',
+    *SHAPE_FEATURE_FIELDS,
+    'contact_valid',
+]
+
+POSITIVE_TASK_FIELDS = [
+    'sample_id', 'source_stage', 'shape_id', 'shape_family', 'shape_role',
+    *SHAPE_FEATURE_FIELDS,
+    'contact_valid', 'solve_success', 'is_positive_shape',
+]
+
+SURROGATE_TASK_FIELDS = [
+    'sample_id', 'source_stage', 'source_role', 'shape_id', 'shape_family', 'shape_role',
+    'candidate_id', 'main_id', 'point_id',
+    'a1', 'a2', 'b1', 'b2', 'a3', 'b3', 'a4', 'b4', 'a5', 'b5', 'r0', 'shift', 'neigs',
+    *SHAPE_FEATURE_FIELDS,
+    'contact_length', 'n_domains',
+    'gap34_Hz', 'gap34_rel', 'gap34_gain_Hz', 'gap34_gain_rel',
+    'max_gap_Hz', 'max_gap_rel', 'max_gap_lower_band', 'max_gap_upper_band', 'max_gap_center_freq',
+    'is_gap34_positive', 'is_gap34_gain_positive',
 ]
 
 _tbl1_cache: Dict[str, Dict[str, float]] = {}
@@ -118,30 +151,35 @@ def to_bool(value) -> int:
 
 
 def parse_shape_family(shape_id: str) -> str:
-    m = re.match(r'^(ep\d+)', shape_id or '')
-    return m.group(1) if m else ''
+    match = re.match(r'^(ep\d+)', shape_id or '')
+    return match.group(1) if match else ''
 
 
 def read_csv_rows(path: Path) -> List[Dict[str, str]]:
     if not path.exists():
         return []
-    with path.open('r', encoding='utf-8-sig', newline='') as f:
-        return list(csv.DictReader(f))
+    with path.open('r', encoding='utf-8-sig', newline='') as handle:
+        return list(csv.DictReader(handle))
 
 
 def write_csv(path: Path, rows: List[Dict[str, object]], fieldnames: List[str]) -> None:
     ensure_dir(path.parent)
-    with path.open('w', encoding='utf-8-sig', newline='') as f:
-        writer = csv.DictWriter(f, fieldnames=fieldnames)
+    with path.open('w', encoding='utf-8-sig', newline='') as handle:
+        writer = csv.DictWriter(handle, fieldnames=fieldnames)
         writer.writeheader()
         for row in rows:
-            writer.writerow({k: row.get(k, '') for k in fieldnames})
+            writer.writerow({key: row.get(key, '') for key in fieldnames})
+
+
+def project_rows(rows: List[Dict[str, object]], fieldnames: List[str]) -> List[Dict[str, object]]:
+    return [{key: row.get(key, '') for key in fieldnames} for row in rows]
 
 
 def read_tbl1_metrics(tbl1_path: Path) -> Dict[str, float]:
     key = str(tbl1_path)
     if key in _tbl1_cache:
         return _tbl1_cache[key]
+
     metrics = {
         'gap34_Hz': math.nan,
         'gap34_rel': math.nan,
@@ -158,10 +196,10 @@ def read_tbl1_metrics(tbl1_path: Path) -> Dict[str, float]:
         _tbl1_cache[key] = metrics
         return metrics
 
-    k_vals = []
-    freq_vals = []
-    with tbl1_path.open('r', encoding='utf-8-sig') as f:
-        for raw in f:
+    k_vals: List[float] = []
+    freq_vals: List[float] = []
+    with tbl1_path.open('r', encoding='utf-8-sig') as handle:
+        for raw in handle:
             line = raw.strip()
             if not line or line.startswith('%'):
                 continue
@@ -173,6 +211,7 @@ def read_tbl1_metrics(tbl1_path: Path) -> Dict[str, float]:
             if math.isfinite(k) and math.isfinite(freq):
                 k_vals.append(k)
                 freq_vals.append(freq)
+
     if not k_vals:
         _tbl1_cache[key] = metrics
         return metrics
@@ -186,13 +225,12 @@ def read_tbl1_metrics(tbl1_path: Path) -> Dict[str, float]:
         max_bands = max(max_bands, len(bands))
 
     def column(band_idx: int) -> List[float]:
-        out = []
+        out: List[float] = []
         for bands in bands_by_k:
             if band_idx < len(bands):
                 out.append(bands[band_idx])
         return out
 
-    # Fixed 3-4 gap.
     if max_bands >= FIXED_GAP_BAND + 1:
         lower = column(FIXED_GAP_BAND - 1)
         upper = column(FIXED_GAP_BAND)
@@ -238,6 +276,7 @@ def read_tbl1_metrics(tbl1_path: Path) -> Dict[str, float]:
 def read_shape_features(shape_id: str) -> Dict[str, float]:
     if shape_id in _shape_cache:
         return _shape_cache[shape_id]
+
     features = {
         'shape_area': math.nan,
         'shape_perimeter': math.nan,
@@ -258,8 +297,8 @@ def read_shape_features(shape_id: str) -> Dict[str, float]:
         return features
 
     pts: List[Tuple[float, float]] = []
-    with path.open('r', encoding='utf-8-sig') as f:
-        for raw in f:
+    with path.open('r', encoding='utf-8-sig') as handle:
+        for raw in handle:
             line = raw.strip()
             if not line:
                 continue
@@ -270,6 +309,7 @@ def read_shape_features(shape_id: str) -> Dict[str, float]:
             y = to_float(parts[1])
             if math.isfinite(x) and math.isfinite(y):
                 pts.append((x, y))
+
     if len(pts) < 3:
         _shape_cache[shape_id] = features
         return features
@@ -291,7 +331,7 @@ def read_shape_features(shape_id: str) -> Dict[str, float]:
     area = 0.5 * abs(area_acc)
     bbox_width = max(xs) - min(xs)
     bbox_height = max(ys) - min(ys)
-    aspect = bbox_width / bbox_height if bbox_height not in (0.0, math.nan) and bbox_height != 0 else math.nan
+    aspect = bbox_width / bbox_height if bbox_height != 0 else math.nan
     if abs(area_acc) > 1e-12:
         centroid_x = cx_acc / (3.0 * area_acc)
         centroid_y = cy_acc / (3.0 * area_acc)
@@ -316,10 +356,12 @@ def build_point_baseline_lookup(stage_cfg: Dict[str, object]) -> Dict[str, Dict[
     cache_key = stage_cfg['name']
     if cache_key in _baseline_cache:
         return _baseline_cache[cache_key]
+
     out: Dict[str, Dict[str, float]] = {}
     if stage_cfg.get('baseline_mode') != 'by_point':
         _baseline_cache[cache_key] = out
         return out
+
     rows = read_csv_rows(Path(stage_cfg['baseline_csv']))
     tbl1_dir = Path(stage_cfg['baseline_tbl1_dir'])
     for row in rows:
@@ -344,6 +386,7 @@ def get_single_baseline_metrics(stage_cfg: Dict[str, object]) -> Dict[str, float
     cache_key = stage_cfg['name']
     if cache_key in _baseline_cache:
         return _baseline_cache[cache_key]['__single__']
+
     sample_id = stage_cfg['baseline_sample_id']
     tbl1_dir = Path(stage_cfg['baseline_tbl1_dir'])
     metrics = read_tbl1_metrics(tbl1_dir / f'{sample_id}_tbl1.csv')
@@ -355,12 +398,12 @@ def get_single_baseline_metrics(stage_cfg: Dict[str, object]) -> Dict[str, float
 def get_reference_metrics(stage_cfg: Dict[str, object], row: Dict[str, str]) -> Tuple[float, float]:
     mode = stage_cfg.get('baseline_mode')
     if mode == 'single':
-        m = get_single_baseline_metrics(stage_cfg)
-        return m['ref_gap34_Hz'], m['ref_gap34_rel']
+        metrics = get_single_baseline_metrics(stage_cfg)
+        return metrics['ref_gap34_Hz'], metrics['ref_gap34_rel']
     if mode == 'by_point':
         point_id = to_text(row.get('point_id'))
-        m = build_point_baseline_lookup(stage_cfg).get(point_id, {})
-        return to_float(m.get('ref_gap34_Hz')), to_float(m.get('ref_gap34_rel'))
+        metrics = build_point_baseline_lookup(stage_cfg).get(point_id, {})
+        return to_float(metrics.get('ref_gap34_Hz')), to_float(metrics.get('ref_gap34_rel'))
     return math.nan, math.nan
 
 
@@ -376,11 +419,22 @@ def standardize_row(stage_cfg: Dict[str, object], row: Dict[str, str]) -> Dict[s
     stage_name = stage_cfg['name']
     sample_id = to_text(row.get('sample_id'))
     tbl1_path = Path(stage_cfg['tbl1_dir']) / f'{sample_id}_tbl1.csv'
-    tbl1_metrics = read_tbl1_metrics(tbl1_path) if sample_id else {
-        'gap34_Hz': math.nan, 'gap34_rel': math.nan, 'gap34_lower_edge_Hz': math.nan, 'gap34_upper_edge_Hz': math.nan,
-        'gap34_center_freq': math.nan, 'max_gap_Hz': math.nan, 'max_gap_rel': math.nan,
-        'max_gap_lower_band': math.nan, 'max_gap_upper_band': math.nan, 'max_gap_center_freq': math.nan,
-    }
+    if sample_id:
+        tbl1_metrics = read_tbl1_metrics(tbl1_path)
+    else:
+        tbl1_metrics = {
+            'gap34_Hz': math.nan,
+            'gap34_rel': math.nan,
+            'gap34_lower_edge_Hz': math.nan,
+            'gap34_upper_edge_Hz': math.nan,
+            'gap34_center_freq': math.nan,
+            'max_gap_Hz': math.nan,
+            'max_gap_rel': math.nan,
+            'max_gap_lower_band': math.nan,
+            'max_gap_upper_band': math.nan,
+            'max_gap_center_freq': math.nan,
+        }
+
     explicit_gap34_hz = to_float(row.get('gap34_Hz'))
     explicit_gap34_rel = to_float(row.get('gap34_rel'))
     explicit_gap34_lower = to_float(row.get('gap34_lower_edge_Hz'))
@@ -395,26 +449,36 @@ def standardize_row(stage_cfg: Dict[str, object], row: Dict[str, str]) -> Dict[s
     explicit_max_gap_lb = to_float(row.get('max_gap_lower_band'))
     explicit_max_gap_ub = to_float(row.get('max_gap_upper_band'))
     explicit_max_gap_center = to_float(row.get('max_gap_center_freq'))
+
     shape_id = to_text(row.get('shape_id'))
     shape_features = read_shape_features(shape_id)
     ref_gap34_hz, ref_gap34_rel = get_reference_metrics(stage_cfg, row)
-    gap34_hz = explicit_gap34_hz if math.isfinite(explicit_gap34_hz) else (tbl1_metrics['gap34_Hz'] if to_bool(row.get('solve_success')) else math.nan)
-    gap34_rel = explicit_gap34_rel if math.isfinite(explicit_gap34_rel) else (tbl1_metrics['gap34_rel'] if to_bool(row.get('solve_success')) else math.nan)
-    gap34_lower_edge = explicit_gap34_lower if math.isfinite(explicit_gap34_lower) else (tbl1_metrics['gap34_lower_edge_Hz'] if to_bool(row.get('solve_success')) else math.nan)
-    gap34_upper_edge = explicit_gap34_upper if math.isfinite(explicit_gap34_upper) else (tbl1_metrics['gap34_upper_edge_Hz'] if to_bool(row.get('solve_success')) else math.nan)
-    gap34_center = explicit_gap34_center if math.isfinite(explicit_gap34_center) else (tbl1_metrics['gap34_center_freq'] if to_bool(row.get('solve_success')) else math.nan)
+
+    solve_success = to_bool(row.get('solve_success'))
+    gap34_hz = explicit_gap34_hz if math.isfinite(explicit_gap34_hz) else (tbl1_metrics['gap34_Hz'] if solve_success else math.nan)
+    gap34_rel = explicit_gap34_rel if math.isfinite(explicit_gap34_rel) else (tbl1_metrics['gap34_rel'] if solve_success else math.nan)
+    gap34_lower_edge = explicit_gap34_lower if math.isfinite(explicit_gap34_lower) else (tbl1_metrics['gap34_lower_edge_Hz'] if solve_success else math.nan)
+    gap34_upper_edge = explicit_gap34_upper if math.isfinite(explicit_gap34_upper) else (tbl1_metrics['gap34_upper_edge_Hz'] if solve_success else math.nan)
+    gap34_center = explicit_gap34_center if math.isfinite(explicit_gap34_center) else (tbl1_metrics['gap34_center_freq'] if solve_success else math.nan)
     ref_gap34_hz = explicit_ref_gap34_hz if math.isfinite(explicit_ref_gap34_hz) else ref_gap34_hz
     ref_gap34_rel = explicit_ref_gap34_rel if math.isfinite(explicit_ref_gap34_rel) else ref_gap34_rel
     gap34_gain_hz = explicit_gap34_gain_hz if math.isfinite(explicit_gap34_gain_hz) else (gap34_hz - ref_gap34_hz if math.isfinite(gap34_hz) and math.isfinite(ref_gap34_hz) else math.nan)
     gap34_gain_rel = explicit_gap34_gain_rel if math.isfinite(explicit_gap34_gain_rel) else (gap34_rel - ref_gap34_rel if math.isfinite(gap34_rel) and math.isfinite(ref_gap34_rel) else math.nan)
-    max_gap_hz = explicit_max_gap_hz if math.isfinite(explicit_max_gap_hz) else (tbl1_metrics['max_gap_Hz'] if to_bool(row.get('solve_success')) else math.nan)
-    max_gap_rel = explicit_max_gap_rel if math.isfinite(explicit_max_gap_rel) else (tbl1_metrics['max_gap_rel'] if to_bool(row.get('solve_success')) else math.nan)
-    max_gap_lb = explicit_max_gap_lb if math.isfinite(explicit_max_gap_lb) else (tbl1_metrics['max_gap_lower_band'] if to_bool(row.get('solve_success')) else math.nan)
-    max_gap_ub = explicit_max_gap_ub if math.isfinite(explicit_max_gap_ub) else (tbl1_metrics['max_gap_upper_band'] if to_bool(row.get('solve_success')) else math.nan)
-    max_gap_center = explicit_max_gap_center if math.isfinite(explicit_max_gap_center) else (tbl1_metrics['max_gap_center_freq'] if to_bool(row.get('solve_success')) else math.nan)
+    max_gap_hz = explicit_max_gap_hz if math.isfinite(explicit_max_gap_hz) else (tbl1_metrics['max_gap_Hz'] if solve_success else math.nan)
+    max_gap_rel = explicit_max_gap_rel if math.isfinite(explicit_max_gap_rel) else (tbl1_metrics['max_gap_rel'] if solve_success else math.nan)
+    max_gap_lb = explicit_max_gap_lb if math.isfinite(explicit_max_gap_lb) else (tbl1_metrics['max_gap_lower_band'] if solve_success else math.nan)
+    max_gap_ub = explicit_max_gap_ub if math.isfinite(explicit_max_gap_ub) else (tbl1_metrics['max_gap_upper_band'] if solve_success else math.nan)
+    max_gap_center = explicit_max_gap_center if math.isfinite(explicit_max_gap_center) else (tbl1_metrics['max_gap_center_freq'] if solve_success else math.nan)
     stage_gap_hz, stage_gap_rel, stage_gap_lb, stage_gap_ub = stage_reported_gap_fields(row)
 
-    source_role = to_text(row.get('shape_role')) or to_text(row.get('candidate_role')) or ('screening' if stage_name == 'stage1' else '')
+    raw_shape_role = to_text(row.get('shape_role'))
+    source_role = raw_shape_role or to_text(row.get('candidate_role')) or ('screening' if stage_name == 'stage1' else '')
+    shape_role = raw_shape_role or source_role
+    if 'is_positive_shape' in row and to_text(row.get('is_positive_shape')) != '':
+        is_positive_shape = to_bool(row.get('is_positive_shape'))
+    else:
+        is_positive_shape = 1 if math.isfinite(gap34_gain_hz) and gap34_gain_hz > 0 else 0
+
     out = {
         'sample_id': sample_id,
         'source_stage': stage_name,
@@ -425,6 +489,7 @@ def standardize_row(stage_cfg: Dict[str, object], row: Dict[str, str]) -> Dict[s
         'point_id': to_text(row.get('point_id')),
         'shape_id': shape_id,
         'shape_family': parse_shape_family(shape_id),
+        'shape_role': shape_role,
         'a1': to_float(row.get('a1'), 0.0),
         'a2': to_float(row.get('a2'), 0.0),
         'b1': to_float(row.get('b1'), 0.0),
@@ -440,7 +505,7 @@ def standardize_row(stage_cfg: Dict[str, object], row: Dict[str, str]) -> Dict[s
         'neigs': to_float(row.get('neigs'), math.nan),
         'geometry_valid': to_bool(row.get('geometry_valid')),
         'contact_valid': to_bool(row.get('contact_valid')),
-        'solve_success': to_bool(row.get('solve_success')),
+        'solve_success': solve_success,
         'contact_length': to_float(row.get('contact_length')),
         'n_domains': to_float(row.get('n_domains')),
         'has_tiny_fragments': to_bool(row.get('has_tiny_fragments')),
@@ -464,7 +529,8 @@ def standardize_row(stage_cfg: Dict[str, object], row: Dict[str, str]) -> Dict[s
         'max_gap_center_freq': max_gap_center,
         'is_gap34_positive': 1 if math.isfinite(gap34_hz) and gap34_hz > 0 else 0,
         'is_gap34_gain_positive': 1 if math.isfinite(gap34_gain_hz) and gap34_gain_hz > 0 else 0,
-        'is_training_ready': 1 if to_bool(row.get('geometry_valid')) and to_bool(row.get('contact_valid')) and to_bool(row.get('solve_success')) and math.isfinite(gap34_hz) else 0,
+        'is_positive_shape': is_positive_shape,
+        'is_training_ready': 1 if to_bool(row.get('geometry_valid')) and to_bool(row.get('contact_valid')) and solve_success and math.isfinite(gap34_hz) else 0,
         'label_definition': 'fixed_gap_band_3_4',
         'error_message': to_text(row.get('error_message')),
     }
@@ -475,41 +541,59 @@ def standardize_row(stage_cfg: Dict[str, object], row: Dict[str, str]) -> Dict[s
 def build_rows() -> List[Dict[str, object]]:
     rows: List[Dict[str, object]] = []
     for stage_cfg in STAGES:
-        stage_rows = read_csv_rows(Path(stage_cfg['results_csv']))
-        for row in stage_rows:
+        for row in read_csv_rows(Path(stage_cfg['results_csv'])):
             rows.append(standardize_row(stage_cfg, row))
-    rows.sort(key=lambda r: (r['source_stage'], r['sample_id']))
+    rows.sort(key=lambda item: (item['source_stage'], item['sample_id']))
     return rows
 
 
 def build_stage_summary(rows: List[Dict[str, object]]) -> List[Dict[str, object]]:
     grouped: Dict[str, List[Dict[str, object]]] = {}
     for row in rows:
-        grouped.setdefault(row['source_stage'], []).append(row)
+        grouped.setdefault(str(row['source_stage']), []).append(row)
+
     summary: List[Dict[str, object]] = []
-    for stage, sub in grouped.items():
+    for stage, subset in grouped.items():
         summary.append({
             'source_stage': stage,
-            'rows_total': len(sub),
-            'rows_training_ready': sum(int(r['is_training_ready']) for r in sub),
-            'rows_gap34_positive': sum(int(r['is_gap34_positive']) for r in sub),
-            'rows_gap34_gain_positive': sum(int(r['is_gap34_gain_positive']) for r in sub),
-            'rows_contact_valid': sum(int(r['contact_valid']) for r in sub),
-            'rows_solve_success': sum(int(r['solve_success']) for r in sub),
+            'rows_total': len(subset),
+            'rows_training_ready': sum(int(row['is_training_ready']) for row in subset),
+            'rows_gap34_positive': sum(int(row['is_gap34_positive']) for row in subset),
+            'rows_gap34_gain_positive': sum(int(row['is_gap34_gain_positive']) for row in subset),
+            'rows_contact_valid': sum(int(row['contact_valid']) for row in subset),
+            'rows_solve_success': sum(int(row['solve_success']) for row in subset),
         })
-    summary.sort(key=lambda r: r['source_stage'])
+    summary.sort(key=lambda item: item['source_stage'])
     return summary
 
 
-def main() -> None:
-    ensure_dir(OUT_DIR)
-    rows = build_rows()
-    regression_rows = [row for row in rows if int(row['is_training_ready']) == 1]
-    stage_summary = build_stage_summary(rows)
-    write_csv(MASTER_CSV, rows, MASTER_FIELDS)
-    write_csv(REGRESSION_CSV, regression_rows, REGRESSION_FIELDS)
-    write_csv(STAGE_SUMMARY_CSV, stage_summary, list(stage_summary[0].keys()) if stage_summary else ['source_stage'])
-    info = {
+def build_task_datasets(rows: List[Dict[str, object]]) -> Dict[str, List[Dict[str, object]]]:
+    contact_rows = [
+        row for row in rows
+        if row['source_stage'] == 'stage1'
+    ]
+    positive_rows = [
+        row for row in rows
+        if row['source_stage'] == 'stage1' and int(row['contact_valid']) == 1 and int(row['solve_success']) == 1
+    ]
+    surrogate_core_rows = [
+        row for row in rows
+        if row['source_stage'] in SURROGATE_CORE_STAGES and int(row['is_training_ready']) == 1
+    ]
+    surrogate_specialcase_rows = [
+        row for row in rows
+        if row['source_stage'] == 'stage2_harmonics_refine' and row.get('shape_role') == 'special_case' and int(row['is_training_ready']) == 1
+    ]
+    return {
+        'contact_cls': project_rows(contact_rows, CONTACT_TASK_FIELDS),
+        'positive_cls': project_rows(positive_rows, POSITIVE_TASK_FIELDS),
+        'surrogate_core': project_rows(surrogate_core_rows, SURROGATE_TASK_FIELDS),
+        'surrogate_specialcase': project_rows(surrogate_specialcase_rows, SURROGATE_TASK_FIELDS),
+    }
+
+
+def build_dataset_info(rows: List[Dict[str, object]], regression_rows: List[Dict[str, object]], stage_summary: List[Dict[str, object]], task_rows: Dict[str, List[Dict[str, object]]]) -> Dict[str, object]:
+    return {
         'label_definition': 'fixed_gap_band_3_4',
         'fixed_gap_band': FIXED_GAP_BAND,
         'master_rows': len(rows),
@@ -518,13 +602,77 @@ def main() -> None:
         'master_csv': str(MASTER_CSV),
         'regression_csv': str(REGRESSION_CSV),
         'stage_summary_csv': str(STAGE_SUMMARY_CSV),
+        'tasks': {
+            'shape_screening_contact_cls_v1': {
+                'path': str(CONTACT_TASK_CSV),
+                'rows': len(task_rows['contact_cls']),
+                'target': 'contact_valid',
+                'source_stages': ['stage1'],
+                'feature_preset': 'shape_only',
+            },
+            'shape_screening_positive_cls_v1': {
+                'path': str(POSITIVE_TASK_CSV),
+                'rows': len(task_rows['positive_cls']),
+                'target': 'is_positive_shape',
+                'source_stages': ['stage1'],
+                'feature_preset': 'shape_only',
+                'row_filter': 'contact_valid=1 && solve_success=1',
+            },
+            'surrogate_regression_core_v1': {
+                'path': str(SURROGATE_CORE_TASK_CSV),
+                'rows': len(task_rows['surrogate_core']),
+                'target': 'gap34_gain_Hz',
+                'source_stages': SURROGATE_CORE_STAGES,
+                'feature_presets': ['surrogate_core', 'surrogate_geo_augmented'],
+                'row_filter': 'is_training_ready=1',
+            },
+            'surrogate_regression_specialcase_v1': {
+                'path': str(SURROGATE_SPECIALCASE_TASK_CSV),
+                'rows': len(task_rows['surrogate_specialcase']),
+                'target': 'gap34_gain_Hz',
+                'source_stages': ['stage2_harmonics_refine'],
+                'feature_presets': ['surrogate_core', 'surrogate_geo_augmented'],
+                'row_filter': 'shape_role=special_case && is_training_ready=1',
+            },
+        },
+        'shape_feature_fields': SHAPE_FEATURE_FIELDS,
+        'stage_summary': stage_summary,
     }
-    DATASET_INFO_JSON.write_text(json.dumps(info, indent=2, ensure_ascii=False), encoding='utf-8')
+
+
+def main() -> None:
+    ensure_dir(OUT_DIR)
+    ensure_dir(TASKS_DIR)
+
+    rows = build_rows()
+    regression_rows = [row for row in rows if int(row['is_training_ready']) == 1]
+    stage_summary = build_stage_summary(rows)
+    task_rows = build_task_datasets(rows)
+
+    write_csv(MASTER_CSV, rows, MASTER_FIELDS)
+    write_csv(REGRESSION_CSV, regression_rows, REGRESSION_FIELDS)
+    write_csv(STAGE_SUMMARY_CSV, stage_summary, list(stage_summary[0].keys()) if stage_summary else ['source_stage'])
+    write_csv(CONTACT_TASK_CSV, task_rows['contact_cls'], CONTACT_TASK_FIELDS)
+    write_csv(POSITIVE_TASK_CSV, task_rows['positive_cls'], POSITIVE_TASK_FIELDS)
+    write_csv(SURROGATE_CORE_TASK_CSV, task_rows['surrogate_core'], SURROGATE_TASK_FIELDS)
+    write_csv(SURROGATE_SPECIALCASE_TASK_CSV, task_rows['surrogate_specialcase'], SURROGATE_TASK_FIELDS)
+
+    dataset_info = build_dataset_info(rows, regression_rows, stage_summary, task_rows)
+    DATASET_INFO_JSON.write_text(json.dumps(dataset_info, indent=2, ensure_ascii=False), encoding='utf-8')
+
     print(f'[DONE] master rows: {len(rows)}')
     print(f'[DONE] regression rows: {len(regression_rows)}')
+    print(f'[DONE] contact cls rows: {len(task_rows["contact_cls"])}')
+    print(f'[DONE] positive cls rows: {len(task_rows["positive_cls"])}')
+    print(f'[DONE] surrogate core rows: {len(task_rows["surrogate_core"])}')
+    print(f'[DONE] surrogate specialcase rows: {len(task_rows["surrogate_specialcase"])}')
     print(f'[OUT] {MASTER_CSV}')
     print(f'[OUT] {REGRESSION_CSV}')
     print(f'[OUT] {STAGE_SUMMARY_CSV}')
+    print(f'[OUT] {CONTACT_TASK_CSV}')
+    print(f'[OUT] {POSITIVE_TASK_CSV}')
+    print(f'[OUT] {SURROGATE_CORE_TASK_CSV}')
+    print(f'[OUT] {SURROGATE_SPECIALCASE_TASK_CSV}')
 
 
 if __name__ == '__main__':

@@ -1,0 +1,272 @@
+﻿from __future__ import annotations
+
+import argparse
+import math
+from pathlib import Path
+from typing import Dict, List
+
+import numpy as np
+import pandas as pd
+import torch
+
+from ml_common import (
+    DEFAULT_OUT_ROOT,
+    ROOT,
+    MLP,
+    regression_metrics,
+    save_csv_rows,
+    save_json,
+)
+
+DEFAULT_DATASET = ROOT / 'data' / 'ml_dataset' / 'v1' / 'tasks' / 'surrogate_regression_core_v1.csv'
+DEFAULT_CONTACT_RUN = DEFAULT_OUT_ROOT / 'mlp_contact_valid_shape_only_v1_full'
+DEFAULT_POSITIVE_RUN = DEFAULT_OUT_ROOT / 'mlp_is_positive_shape_shape_only_v1_full'
+DEFAULT_REG_RUN = DEFAULT_OUT_ROOT / 'mlp_gap34_gain_surrogate_v2_full'
+
+
+def parse_args() -> argparse.Namespace:
+    parser = argparse.ArgumentParser(description='Run cascaded shape-screening + surrogate scoring pipeline.')
+    parser.add_argument('--dataset', type=Path, default=DEFAULT_DATASET)
+    parser.add_argument('--contact-run-root', type=Path, default=DEFAULT_CONTACT_RUN)
+    parser.add_argument('--contact-split', default='shape_family')
+    parser.add_argument('--positive-run-root', type=Path, default=DEFAULT_POSITIVE_RUN)
+    parser.add_argument('--positive-split', default='shape_family')
+    parser.add_argument('--reg-run-root', type=Path, default=DEFAULT_REG_RUN)
+    parser.add_argument('--reg-split', default='shape_id')
+    parser.add_argument('--run-name', default='cascade_surrogate_v1')
+    parser.add_argument('--contact-threshold', type=float, default=0.9)
+    parser.add_argument('--positive-threshold', type=float, default=0.8)
+    parser.add_argument('--reg-min', type=float, default=0.0)
+    parser.add_argument('--top-k', type=int, default=20)
+    return parser.parse_args()
+
+
+def stable_sigmoid(x: np.ndarray) -> np.ndarray:
+    x = np.asarray(x, dtype=float)
+    out = np.empty_like(x, dtype=float)
+    pos = x >= 0
+    out[pos] = 1.0 / (1.0 + np.exp(-x[pos]))
+    exp_x = np.exp(x[~pos])
+    out[~pos] = exp_x / (1.0 + exp_x)
+    return out
+
+
+def load_checkpoint(run_root: Path, split_name: str) -> Dict[str, object]:
+    model_path = run_root / split_name / 'model.pt'
+    if not model_path.exists():
+        raise FileNotFoundError(f'Model checkpoint not found: {model_path}')
+    return torch.load(model_path, map_location='cpu')
+
+
+def build_model(checkpoint: Dict[str, object]) -> MLP:
+    model = MLP(
+        input_dim=int(checkpoint['input_dim']),
+        hidden_dims=list(checkpoint['hidden_dims']),
+        output_dim=1,
+        dropout=float(checkpoint.get('dropout', 0.0)),
+    )
+    model.load_state_dict(checkpoint['model_state_dict'])
+    model.eval()
+    return model
+
+
+def transform_with_checkpoint(frame: pd.DataFrame, feature_cols: List[str], checkpoint: Dict[str, object]) -> np.ndarray:
+    x_raw = frame.loc[:, feature_cols].astype(float).to_numpy()
+    means = np.asarray(checkpoint['x_mean'], dtype=float)
+    stds = np.asarray(checkpoint['x_std'], dtype=float)
+    filled = np.where(np.isfinite(x_raw), x_raw, means)
+    return (filled - means) / stds
+
+
+def predict_classifier(frame: pd.DataFrame, run_root: Path, split_name: str) -> pd.DataFrame:
+    checkpoint = load_checkpoint(run_root, split_name)
+    model = build_model(checkpoint)
+    feature_cols = list(checkpoint['feature_cols'])
+
+    unique_shapes = frame[['shape_id', *feature_cols]].drop_duplicates(subset=['shape_id']).reset_index(drop=True)
+    x = transform_with_checkpoint(unique_shapes, feature_cols, checkpoint)
+    with torch.no_grad():
+        logits = model(torch.tensor(x, dtype=torch.float32)).cpu().numpy().reshape(-1)
+    probs = stable_sigmoid(logits)
+    out = unique_shapes[['shape_id']].copy()
+    out['prob'] = probs
+    return out
+
+
+def predict_regressor(frame: pd.DataFrame, run_root: Path, split_name: str) -> np.ndarray:
+    checkpoint = load_checkpoint(run_root, split_name)
+    model = build_model(checkpoint)
+    feature_cols = list(checkpoint['feature_cols'])
+    x = transform_with_checkpoint(frame, feature_cols, checkpoint)
+    with torch.no_grad():
+        pred_scaled = model(torch.tensor(x, dtype=torch.float32)).cpu().numpy().reshape(-1)
+    y_mean = float(checkpoint['y_mean'])
+    y_std = float(checkpoint['y_std'])
+    return pred_scaled * y_std + y_mean
+
+
+def finite_actual_subset(df: pd.DataFrame) -> pd.DataFrame:
+    if 'gap34_gain_Hz' not in df.columns:
+        return df.iloc[0:0].copy()
+    actual = pd.to_numeric(df['gap34_gain_Hz'], errors='coerce')
+    return df[np.isfinite(actual)].copy()
+
+
+def compute_gate_metrics(df: pd.DataFrame, top_k: int) -> Dict[str, object]:
+    metrics: Dict[str, object] = {
+        'rows_total': int(len(df)),
+        'rows_contact_gate': int(df['contact_gate'].sum()),
+        'rows_positive_gate': int(df['positive_gate'].sum()),
+        'rows_reg_positive_gate': int(df['reg_positive_gate'].sum()),
+        'rows_cascade_gate': int(df['cascade_gate'].sum()),
+        'contact_gate_rate': float(df['contact_gate'].mean()),
+        'positive_gate_rate': float(df['positive_gate'].mean()),
+        'reg_positive_gate_rate': float(df['reg_positive_gate'].mean()),
+        'cascade_gate_rate': float(df['cascade_gate'].mean()),
+    }
+
+    actual_df = finite_actual_subset(df)
+    if actual_df.empty:
+        return metrics
+
+    actual = actual_df['gap34_gain_Hz'].to_numpy(dtype=float)
+    pred = actual_df['surrogate_pred_gap34_gain_Hz'].to_numpy(dtype=float)
+    metrics['rows_with_actual_gap34_gain'] = int(len(actual_df))
+    metrics['surrogate_regression_all'] = regression_metrics(actual, pred)
+    actual_positive = actual > 0
+    metrics['actual_positive_rate_all'] = float(actual_positive.mean())
+    metrics['actual_mean_gap34_gain_all'] = float(np.mean(actual))
+
+    gated = actual_df[actual_df['cascade_gate']].copy()
+    if not gated.empty:
+        gated_actual = gated['gap34_gain_Hz'].to_numpy(dtype=float)
+        gated_pred = gated['surrogate_pred_gap34_gain_Hz'].to_numpy(dtype=float)
+        metrics['actual_positive_rate_gated'] = float(np.mean(gated_actual > 0))
+        metrics['actual_mean_gap34_gain_gated'] = float(np.mean(gated_actual))
+        metrics['gated_regression'] = regression_metrics(gated_actual, gated_pred)
+    else:
+        metrics['actual_positive_rate_gated'] = math.nan
+        metrics['actual_mean_gap34_gain_gated'] = math.nan
+        metrics['gated_regression'] = {'mae': math.nan, 'rmse': math.nan, 'r2': math.nan}
+
+    ranked = actual_df.sort_values('cascade_score', ascending=False).head(min(top_k, len(actual_df))).copy()
+    metrics['top_k'] = int(len(ranked))
+    metrics['top_k_actual_positive_rate'] = float(np.mean(ranked['gap34_gain_Hz'].to_numpy(dtype=float) > 0)) if len(ranked) else math.nan
+    metrics['top_k_actual_mean_gap34_gain'] = float(np.mean(ranked['gap34_gain_Hz'].to_numpy(dtype=float))) if len(ranked) else math.nan
+    metrics['top_k_pred_mean_gap34_gain'] = float(np.mean(ranked['surrogate_pred_gap34_gain_Hz'].to_numpy(dtype=float))) if len(ranked) else math.nan
+    return metrics
+
+
+def build_stage_summary(df: pd.DataFrame) -> List[Dict[str, object]]:
+    rows: List[Dict[str, object]] = []
+    grouped = df.groupby('source_stage') if 'source_stage' in df.columns else [('all', df)]
+    for stage, subset in grouped:
+        row: Dict[str, object] = {
+            'source_stage': stage,
+            'rows': int(len(subset)),
+            'contact_gate_rate': float(subset['contact_gate'].mean()),
+            'positive_gate_rate': float(subset['positive_gate'].mean()),
+            'cascade_gate_rate': float(subset['cascade_gate'].mean()),
+            'mean_surrogate_pred_gap34_gain': float(np.mean(subset['surrogate_pred_gap34_gain_Hz'])),
+            'mean_cascade_score': float(np.mean(subset['cascade_score'])),
+        }
+        actual_subset = finite_actual_subset(subset)
+        if not actual_subset.empty:
+            actual = actual_subset['gap34_gain_Hz'].to_numpy(dtype=float)
+            row['rows_with_actual_gap34_gain'] = int(len(actual_subset))
+            row['mean_actual_gap34_gain'] = float(np.mean(actual))
+            row['actual_positive_rate'] = float(np.mean(actual > 0))
+        rows.append(row)
+    return rows
+
+
+def build_shape_summary(df: pd.DataFrame) -> List[Dict[str, object]]:
+    rows: List[Dict[str, object]] = []
+    for shape_id, subset in df.groupby('shape_id'):
+        row: Dict[str, object] = {
+            'shape_id': shape_id,
+            'shape_family': subset['shape_family'].iloc[0] if 'shape_family' in subset.columns else '',
+            'shape_role': subset['shape_role'].iloc[0] if 'shape_role' in subset.columns else '',
+            'rows': int(len(subset)),
+            'contact_prob': float(subset['contact_prob'].iloc[0]),
+            'positive_prob': float(subset['positive_prob'].iloc[0]),
+            'mean_surrogate_pred_gap34_gain': float(np.mean(subset['surrogate_pred_gap34_gain_Hz'])),
+            'max_surrogate_pred_gap34_gain': float(np.max(subset['surrogate_pred_gap34_gain_Hz'])),
+            'mean_cascade_score': float(np.mean(subset['cascade_score'])),
+            'max_cascade_score': float(np.max(subset['cascade_score'])),
+            'cascade_gate_any': int(subset['cascade_gate'].any()),
+            'cascade_gate_rate': float(subset['cascade_gate'].mean()),
+        }
+        actual_subset = finite_actual_subset(subset)
+        if not actual_subset.empty:
+            actual = actual_subset['gap34_gain_Hz'].to_numpy(dtype=float)
+            row['rows_with_actual_gap34_gain'] = int(len(actual_subset))
+            row['mean_actual_gap34_gain'] = float(np.mean(actual))
+            row['max_actual_gap34_gain'] = float(np.max(actual))
+            row['actual_positive_rate'] = float(np.mean(actual > 0))
+        rows.append(row)
+    rows.sort(key=lambda item: item['max_cascade_score'], reverse=True)
+    return rows
+
+
+def main() -> None:
+    args = parse_args()
+    df = pd.read_csv(args.dataset)
+    if df.empty:
+        raise RuntimeError(f'Empty dataset: {args.dataset}')
+
+    contact_scores = predict_classifier(df, args.contact_run_root, args.contact_split)
+    positive_scores = predict_classifier(df, args.positive_run_root, args.positive_split)
+    df = df.merge(contact_scores.rename(columns={'prob': 'contact_prob'}), on='shape_id', how='left')
+    df = df.merge(positive_scores.rename(columns={'prob': 'positive_prob'}), on='shape_id', how='left')
+    if df['contact_prob'].isna().any() or df['positive_prob'].isna().any():
+        raise RuntimeError('Cascade classifier merge produced missing probabilities.')
+
+    reg_pred = predict_regressor(df, args.reg_run_root, args.reg_split)
+    df['surrogate_pred_gap34_gain_Hz'] = reg_pred
+    df['contact_gate'] = df['contact_prob'] >= args.contact_threshold
+    df['positive_gate'] = df['positive_prob'] >= args.positive_threshold
+    df['reg_positive_gate'] = df['surrogate_pred_gap34_gain_Hz'] > args.reg_min
+    df['cascade_gate'] = df['contact_gate'] & df['positive_gate'] & df['reg_positive_gate']
+    df['cascade_score'] = np.maximum(df['surrogate_pred_gap34_gain_Hz'], 0.0) * df['contact_prob'] * df['positive_prob']
+
+    run_dir = DEFAULT_OUT_ROOT / args.run_name
+    run_dir.mkdir(parents=True, exist_ok=True)
+
+    stage_rows = build_stage_summary(df)
+    shape_rows = build_shape_summary(df)
+    top_rows = df.sort_values('cascade_score', ascending=False).head(min(args.top_k, len(df))).copy()
+    metrics = compute_gate_metrics(df, args.top_k)
+    config = {
+        'dataset': str(args.dataset),
+        'contact_run_root': str(args.contact_run_root),
+        'contact_split': args.contact_split,
+        'positive_run_root': str(args.positive_run_root),
+        'positive_split': args.positive_split,
+        'reg_run_root': str(args.reg_run_root),
+        'reg_split': args.reg_split,
+        'contact_threshold': args.contact_threshold,
+        'positive_threshold': args.positive_threshold,
+        'reg_min': args.reg_min,
+        'top_k': args.top_k,
+        'score_definition': 'max(reg_pred,0) * contact_prob * positive_prob',
+    }
+
+    df.to_csv(run_dir / 'cascade_predictions.csv', index=False, encoding='utf-8-sig')
+    save_csv_rows(run_dir / 'cascade_stage_summary.csv', list(stage_rows[0].keys()) if stage_rows else ['source_stage'], stage_rows)
+    save_csv_rows(run_dir / 'cascade_shape_summary.csv', list(shape_rows[0].keys()) if shape_rows else ['shape_id'], shape_rows)
+    save_csv_rows(run_dir / 'cascade_top_candidates.csv', list(top_rows.columns), top_rows.to_dict(orient='records'))
+    save_json(run_dir / 'cascade_metrics.json', metrics)
+    save_json(run_dir / 'cascade_config.json', config)
+
+    print('[DONE] cascade surrogate scoring complete')
+    print(f'[RUN] {run_dir}')
+    print(f"[GATE] kept={metrics['rows_cascade_gate']}/{metrics['rows_total']} rate={metrics['cascade_gate_rate']:.4f}")
+    if 'actual_positive_rate_gated' in metrics:
+        print(f"[ACTUAL] positive_all={metrics['actual_positive_rate_all']:.4f} positive_gated={metrics['actual_positive_rate_gated']:.4f}")
+        print(f"[TOPK] k={metrics['top_k']} mean_actual_gap34_gain={metrics['top_k_actual_mean_gap34_gain']:.4f}")
+
+
+if __name__ == '__main__':
+    main()
+
