@@ -12,7 +12,7 @@ The project is not a single surrogate-model demo. It is a closed loop that combi
 4. cascade-style candidate ranking
 5. physical re-validation back in COMSOL
 
-The current codebase preserves the full iteration history from `v1` to `v10` and is organized around the research finding that **broad-transfer points do not generalize reliably, while targeted exploitation does**.
+The current codebase preserves the full iteration history from `v1` to `v10`, plus the latest `v11`-style refinement branches that extend `v10` with calibrated scoring, diversity-aware manifesting, and a tightly constrained GA local tuner. The repository is organized around the research finding that **broad-transfer points do not generalize reliably, while targeted exploitation does**.
 
 ## Current Research Status
 
@@ -20,8 +20,9 @@ The main thesis storyline is now stable.
 
 - The physical evaluation baseline is fixed: soft matrix + hard inclusion, trusted baseline point, and the fixed `3-4` bandgap label (`gap34_Hz`, `gap34_gain_Hz`).
 - Broad rollout has been tested and rejected through multiple physical validation rounds.
-- The validated high-value exploitation point is currently:
-  - `rf09_h09_b5_002_a4_0015`
+- The validated high-value exploitation point on the main seed-only line is now:
+  - `rf09_h00_center`
+- The older `rf09_h09_b5_002_a4_0015` point is retained as a lightweight control / comparison point in the refined workflow.
 - Two transfer modes have been established:
   - **directional exploitation** on already validated families
   - **seed-only discovery** on unseen families
@@ -134,6 +135,7 @@ Validation runners:
 - `runners/run_stage4_validation_ab_v8.m`
 - `runners/run_stage4_validation_ab_v9.m`
 - `runners/run_stage4_validation_ab_v10.m`
+- `runners/run_stage4_validation_ab_ga_v1.m`
 
 These runners:
 - read a staged validation manifest
@@ -170,6 +172,12 @@ These runners:
 - refined shortlist strategy
 - prioritized `weak_positive` / `strong_positive` seeds and reduced neutral seeds to small probe slots
 
+### `v11` branch line
+- expanded `v10` from a single trusted point into a small point cluster, then re-centered the main line on `rf09_h00_center`
+- added calibrated seed-discovery scoring and diversity-aware manifest selection
+- added a **conditional local GA tuner** that only activates on shapes that have already shown real COMSOL benefit under conservative local tuning
+- current whitelist example: `ep249_step33_contour_xy`, where the local tuner slightly outperformed the plain `rf09_h00_center` baseline in physical validation
+
 ## Current Recommended Workflow
 
 If continuing the thesis from the current state, the recommended operational sequence is:
@@ -187,6 +195,15 @@ For the current repository state, the latest seed-only refined path is:
 - scoring: `stage3_training/run_seed_discovery_scoring_v7.py`
 - manifest: `stage3_training/build_validation_manifest_v10.py`
 - COMSOL validation: `runners/run_stage4_validation_ab_v10.m`
+
+For the current optional GA refinement branch, the operational path is:
+
+- conservative local GA search: `stage3_training/run_parametric_ga_seed_search_v1.py`
+- shape whitelist: `stage3_training/ga_shape_whitelist_v1.json`
+- GA validation manifest: `stage3_training/build_ga_validation_manifest_v1.py`
+- COMSOL validation: `runners/run_stage4_validation_ab_ga_v1.m`
+
+The intended role of the GA module is **not** to replace the main `v10` seed-only workflow. It is a conditional post-ranking local tuner that is only enabled for shape families that have already demonstrated real COMSOL upside under very small parameter perturbations.
 
 ## Environment
 

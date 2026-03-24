@@ -1,0 +1,12 @@
+﻿{
+  "version": "ga_shape_whitelist_v1",
+  "selection_rule": "enable only shapes with demonstrated real COMSOL benefit over the rf09_h00_center baseline under conservative local GA tuning",
+  "enabled_shape_ids": [
+    "ep249_step33_contour_xy"
+  ],
+  "notes": [
+    "ep249_step33_contour_xy: conservative local GA exceeded the center baseline in stage4_validation_ab_ga_v1",
+    "ep161_step27_contour_xy: GA remained stable but did not beat the center baseline",
+    "ep1933_step96_contour_xy: GA underperformed the center baseline and should stay disabled"
+  ]
+}

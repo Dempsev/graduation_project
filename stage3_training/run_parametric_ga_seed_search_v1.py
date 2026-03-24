@@ -18,6 +18,7 @@ DEFAULT_CONTACT_RUN = DEFAULT_OUT_ROOT / 'mlp_contact_valid_parametric_seed_disc
 DEFAULT_POSITIVE_RUN = DEFAULT_OUT_ROOT / 'mlp_is_positive_shape_parametric_seed_discovery_v7_full'
 DEFAULT_REG_RUN = DEFAULT_OUT_ROOT / 'mlp_gap34_gain_surrogate_v7_full'
 DEFAULT_CALIBRATION_JSON = ROOT / 'stage3_training' / 'seed_discovery_scoring_calibration_v1.json'
+DEFAULT_WHITELIST_JSON = ROOT / 'stage3_training' / 'ga_shape_whitelist_v1.json'
 
 GLOBAL_BOUNDS: Dict[str, Tuple[float, float]] = {
     'a1': (0.46, 0.54),
@@ -32,11 +33,28 @@ GLOBAL_BOUNDS: Dict[str, Tuple[float, float]] = {
     'b5': (0.0, 0.03),
     'r0': (0.010, 0.014),
 }
+
+# Conservative trust region around rf09_h00_center-like points.
+LOCAL_HALF_WIDTHS: Dict[str, float] = {
+    'a1': 0.0030,
+    'a2': 0.0040,
+    'b1': 0.0,
+    'b2': 0.0035,
+    'a3': 0.0,
+    'b3': 0.0,
+    'a4': 0.0020,
+    'b4': 0.0,
+    'a5': 0.0,
+    'b5': 0.0020,
+    'r0': 0.00025,
+}
+
+ACTIVE_PARAM_COLS = ['a1', 'a2', 'b2', 'a4', 'b5', 'r0']
 PARAM_COLS = list(GLOBAL_BOUNDS.keys())
 
 
 def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description='Run parameter-level GA around shortlisted seed shapes.')
+    parser = argparse.ArgumentParser(description='Run conservative parameter-level GA around shortlisted center-point seeds.')
     parser.add_argument('--scored-csv', type=Path, default=DEFAULT_SCORED_CSV)
     parser.add_argument('--out-dir', type=Path, default=DEFAULT_OUT_DIR)
     parser.add_argument('--contact-run-root', type=Path, default=DEFAULT_CONTACT_RUN)
@@ -46,15 +64,16 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--reg-run-root', type=Path, default=DEFAULT_REG_RUN)
     parser.add_argument('--reg-split', default='shape_family')
     parser.add_argument('--calibration-json', type=Path, default=DEFAULT_CALIBRATION_JSON)
+    parser.add_argument('--whitelist-json', type=Path, default=DEFAULT_WHITELIST_JSON)
     parser.add_argument('--top-k-seeds', type=int, default=3)
     parser.add_argument('--only-point-id', default='rf09_h00_center')
-    parser.add_argument('--population-size', type=int, default=32)
-    parser.add_argument('--generations', type=int, default=18)
-    parser.add_argument('--elite-k', type=int, default=6)
-    parser.add_argument('--mutation-rate', type=float, default=0.25)
-    parser.add_argument('--mutation-scale', type=float, default=0.12)
-    parser.add_argument('--local-span-scale', type=float, default=0.35)
-    parser.add_argument('--surrogate-delta-cap', type=float, default=10.0)
+    parser.add_argument('--population-size', type=int, default=20)
+    parser.add_argument('--generations', type=int, default=12)
+    parser.add_argument('--elite-k', type=int, default=4)
+    parser.add_argument('--mutation-rate', type=float, default=0.20)
+    parser.add_argument('--mutation-scale', type=float, default=0.08)
+    parser.add_argument('--local-span-scale', type=float, default=1.0)
+    parser.add_argument('--surrogate-delta-cap', type=float, default=3.0)
     parser.add_argument('--seed', type=int, default=20260324)
     return parser.parse_args()
 
@@ -87,12 +106,26 @@ def tier_rank(series: pd.Series) -> pd.Series:
     return series.astype(str).map(mapping).fillna(-1)
 
 
-def pick_seed_rows(df: pd.DataFrame, top_k: int, only_point_id: str) -> pd.DataFrame:
+def load_shape_whitelist(path: Path | None) -> List[str]:
+    if path is None:
+        return []
+    if not path.exists():
+        return []
+    payload = load_json(path)
+    raw_ids = payload.get('enabled_shape_ids', [])
+    if not isinstance(raw_ids, list):
+        raise ValueError('enabled_shape_ids must be a list in whitelist json.')
+    return [str(item).strip() for item in raw_ids if str(item).strip()]
+
+
+def pick_seed_rows(df: pd.DataFrame, top_k: int, only_point_id: str, whitelist_shape_ids: List[str]) -> pd.DataFrame:
     work = df.copy()
     if only_point_id:
         work = work[work['point_id'].astype(str) == only_point_id].copy()
+    if whitelist_shape_ids:
+        work = work[work['shape_id'].astype(str).isin(whitelist_shape_ids)].copy()
     if work.empty:
-        raise RuntimeError('No scored rows available after point filter.')
+        raise RuntimeError('No scored rows available after point/whitelist filtering.')
     work['tier_rank'] = tier_rank(work.get('stage1_reference_candidate_tier', pd.Series(dtype=object)))
     if 'cascade_gate' in work.columns:
         work['cascade_gate'] = pd.to_numeric(work['cascade_gate'], errors='coerce').fillna(0).astype(int)
@@ -108,15 +141,15 @@ def pick_seed_rows(df: pd.DataFrame, top_k: int, only_point_id: str) -> pd.DataF
 
 def build_local_bounds(base_row: pd.Series, local_span_scale: float) -> Dict[str, Tuple[float, float]]:
     bounds: Dict[str, Tuple[float, float]] = {}
-    scale = float(np.clip(local_span_scale, 0.05, 1.0))
+    scale = float(np.clip(local_span_scale, 0.25, 1.0))
     for name, (global_lo, global_hi) in GLOBAL_BOUNDS.items():
         base_value = float(base_row.get(name, global_lo))
-        if global_lo == global_hi:
-            bounds[name] = (float(global_lo), float(global_hi))
+        half_width = float(LOCAL_HALF_WIDTHS.get(name, 0.0)) * scale
+        if global_lo == global_hi or half_width <= 0:
+            bounds[name] = (float(base_value), float(base_value))
             continue
-        span = (global_hi - global_lo) * scale
-        local_lo = max(global_lo, base_value - span)
-        local_hi = min(global_hi, base_value + span)
+        local_lo = max(global_lo, base_value - half_width)
+        local_hi = min(global_hi, base_value + half_width)
         bounds[name] = (float(local_lo), float(local_hi))
     return bounds
 
@@ -133,11 +166,11 @@ def make_individual(base_row: pd.Series, bounds: Dict[str, Tuple[float, float]],
     for name in PARAM_COLS:
         base_value = float(base_row.get(name, 0.0))
         lo, hi = bounds[name]
-        if lo == hi:
-            genes[name] = float(lo)
+        if lo == hi or name not in ACTIVE_PARAM_COLS:
+            genes[name] = float(base_value)
             continue
         span = hi - lo
-        if rng.random() < 0.75:
+        if rng.random() < 0.90:
             value = base_value + rng.normal(0.0, span * jitter_scale)
         else:
             value = rng.uniform(lo, hi)
@@ -148,6 +181,9 @@ def make_individual(base_row: pd.Series, bounds: Dict[str, Tuple[float, float]],
 def crossover(parent_a: Dict[str, float], parent_b: Dict[str, float], bounds: Dict[str, Tuple[float, float]], rng: np.random.Generator) -> Dict[str, float]:
     child: Dict[str, float] = {}
     for name in PARAM_COLS:
+        if name not in ACTIVE_PARAM_COLS:
+            child[name] = float(parent_a[name])
+            continue
         alpha = rng.random()
         value = alpha * parent_a[name] + (1.0 - alpha) * parent_b[name]
         child[name] = clip_gene(name, value, bounds)
@@ -158,8 +194,7 @@ def mutate(child: Dict[str, float], bounds: Dict[str, Tuple[float, float]], rng:
     out = dict(child)
     for name in PARAM_COLS:
         lo, hi = bounds[name]
-        if lo == hi:
-            out[name] = float(lo)
+        if lo == hi or name not in ACTIVE_PARAM_COLS:
             continue
         if rng.random() > mutation_rate:
             continue
@@ -175,7 +210,7 @@ def build_population_frame(base_row: pd.Series, population: List[Dict[str, float
         row.update(genes)
         row['candidate_id'] = f'ga_{seed_label}_{idx:03d}'
         row['pool_arm'] = 'ga_search'
-        row['point_strategy'] = 'parametric_ga_v1'
+        row['point_strategy'] = 'parametric_ga_v1_conservative'
         row['sample_id'] = f'{row.get("shape_id", "shape")}_{seed_label}_{idx:03d}'
         rows.append(row)
     return pd.DataFrame(rows)
@@ -183,7 +218,7 @@ def build_population_frame(base_row: pd.Series, population: List[Dict[str, float
 
 def normalized_distance(scored: pd.DataFrame, base_row: pd.Series, bounds: Dict[str, Tuple[float, float]]) -> np.ndarray:
     distances: List[np.ndarray] = []
-    for name in PARAM_COLS:
+    for name in ACTIVE_PARAM_COLS:
         lo, hi = bounds[name]
         if hi <= lo:
             continue
@@ -196,21 +231,30 @@ def normalized_distance(scored: pd.DataFrame, base_row: pd.Series, bounds: Dict[
     return np.mean(np.vstack(distances), axis=0)
 
 
-def score_population(pop_df: pd.DataFrame, args: argparse.Namespace, settings: Dict[str, float], base_row: pd.Series, base_surrogate: float, bounds: Dict[str, Tuple[float, float]]) -> pd.DataFrame:
+def score_population(pop_df: pd.DataFrame, args: argparse.Namespace, settings: Dict[str, float], base_row: pd.Series, base_scored: pd.Series, bounds: Dict[str, Tuple[float, float]]) -> pd.DataFrame:
     scored = pop_df.copy()
     scored['contact_prob'] = predict_classifier_rows(scored, args.contact_run_root, args.contact_split)
     scored['positive_prob'] = predict_classifier_rows(scored, args.positive_run_root, args.positive_split)
     scored['surrogate_pred_gap34_gain_Hz'] = predict_regressor(scored, args.reg_run_root, args.reg_split)
     scored = assign_scores(scored, settings)
     scored['distance_from_base'] = normalized_distance(scored, base_row, bounds)
-    surrogate_delta = scored['surrogate_pred_gap34_gain_Hz'].to_numpy(dtype=float) - float(base_surrogate)
-    surrogate_bonus = np.clip(surrogate_delta, 0.0, max(args.surrogate_delta_cap, 1.0)) / max(args.surrogate_delta_cap, 1.0)
+
+    base_contact = float(base_scored['contact_prob'])
+    base_positive = float(base_scored['positive_prob'])
+    base_surrogate = float(base_scored['surrogate_pred_gap34_gain_Hz'])
+
+    contact_delta = np.clip(scored['contact_prob'].to_numpy(dtype=float) - base_contact, 0.0, 0.05) / 0.05
+    positive_delta = np.clip(scored['positive_prob'].to_numpy(dtype=float) - base_positive, 0.0, 0.02) / 0.02
+    surrogate_delta = np.clip(scored['surrogate_pred_gap34_gain_Hz'].to_numpy(dtype=float) - base_surrogate, 0.0, max(args.surrogate_delta_cap, 1.0)) / max(args.surrogate_delta_cap, 1.0)
+
     scored['fitness'] = (
-        0.70 * scored['cascade_score'].to_numpy(dtype=float)
-        + 0.15 * surrogate_bonus
+        0.72 * scored['cascade_score'].to_numpy(dtype=float)
+        + 0.08 * contact_delta
+        + 0.03 * positive_delta
+        + 0.02 * surrogate_delta
         + 0.10 * scored['contact_gate'].astype(float).to_numpy()
         + 0.05 * scored['positive_gate'].astype(float).to_numpy()
-        - 0.10 * scored['distance_from_base'].to_numpy(dtype=float)
+        - 0.25 * scored['distance_from_base'].to_numpy(dtype=float)
     )
     return scored.sort_values(['fitness', 'cascade_score', 'contact_prob', 'surrogate_pred_gap34_gain_Hz'], ascending=[False, False, False, False]).copy()
 
@@ -245,13 +289,13 @@ def run_ga_for_seed(base_row: pd.Series, args: argparse.Namespace, settings: Dic
         {name: float(base_row.get(name, 0.0)) for name in PARAM_COLS}
     ]
     while len(population) < args.population_size:
-        population.append(make_individual(base_row, bounds, rng, jitter_scale=0.10))
+        population.append(make_individual(base_row, bounds, rng, jitter_scale=0.08))
 
     history: List[Dict[str, object]] = []
     latest_scored = pd.DataFrame()
     for generation in range(args.generations):
         pop_df = build_population_frame(base_row, population, seed_label)
-        scored = score_population(pop_df, args, settings, base_row, float(base_scored['surrogate_pred_gap34_gain_Hz']), bounds)
+        scored = score_population(pop_df, args, settings, base_row, base_scored, bounds)
         latest_scored = scored.copy()
         best = scored.iloc[0]
         history.append({
@@ -310,6 +354,7 @@ def main() -> None:
         raise ValueError('elite-k must be at least 1')
 
     settings = resolve_scoring_settings(args.calibration_json)
+    whitelist_shape_ids = load_shape_whitelist(args.whitelist_json)
     args.out_dir.mkdir(parents=True, exist_ok=True)
     rng = np.random.default_rng(args.seed)
 
@@ -317,7 +362,7 @@ def main() -> None:
     if scored_df.empty:
         raise RuntimeError(f'Empty scored csv: {args.scored_csv}')
 
-    seed_rows = pick_seed_rows(scored_df, args.top_k_seeds, args.only_point_id)
+    seed_rows = pick_seed_rows(scored_df, args.top_k_seeds, args.only_point_id, whitelist_shape_ids)
     all_best_rows: List[Dict[str, object]] = []
     all_summary_rows: List[Dict[str, object]] = []
 
@@ -353,14 +398,18 @@ def main() -> None:
         'local_span_scale': float(args.local_span_scale),
         'surrogate_delta_cap': float(args.surrogate_delta_cap),
         'seed': int(args.seed),
+        'whitelist_json': str(args.whitelist_json) if args.whitelist_json else '',
+        'whitelist_shape_ids': list(whitelist_shape_ids),
         'global_bounds': {key: [float(lo), float(hi)] for key, (lo, hi) in GLOBAL_BOUNDS.items()},
+        'local_half_widths': {key: float(val) for key, val in LOCAL_HALF_WIDTHS.items()},
+        'active_param_cols': list(ACTIVE_PARAM_COLS),
         'scoring_settings': settings,
-        'fitness_definition': '0.70*cascade_score + 0.15*clipped_surrogate_delta_bonus + 0.10*contact_gate + 0.05*positive_gate - 0.10*distance_from_base',
+        'fitness_definition': '0.72*cascade_score + 0.08*contact_delta + 0.03*positive_delta + 0.02*clipped_surrogate_delta + 0.10*contact_gate + 0.05*positive_gate - 0.25*distance_from_base',
     })
 
-    print('[DONE] parametric GA seed search complete')
+    print('[DONE] conservative parametric GA seed search complete')
     print(f'[OUT] {args.out_dir}')
-    print(f'[SEEDS] optimized={len(seed_rows)} point_filter={args.only_point_id}')
+    print(f'[SEEDS] optimized={len(seed_rows)} point_filter={args.only_point_id} whitelist={len(whitelist_shape_ids)}')
 
 
 if __name__ == '__main__':

@@ -11,6 +11,7 @@
 5. 再回到 COMSOL 做物理验证
 
 当前仓库已经保留了从 `v1` 到 `v10` 的主要实验链路，代码组织方式也已经从“能跑通的一组脚本”发展成了“按阶段和版本管理的研究代码仓库”。
+Update note: the current `v11` branch line extends `v10` with calibrated scoring, diversity-aware manifests, and a tightly constrained GA local tuner.
 
 ## 当前研究状态
 
@@ -22,6 +23,7 @@
   - 主标签固定为 `3-4` 带带隙，即 `gap34_Hz / gap34_gain_Hz`
 - broad rollout 经过多轮物理回证已经被否掉
 - 当前唯一明确成立的 exploitation 点仍然是：
+- Update note: the refined seed-only main point is now `rf09_h00_center`; the older `rf09_h09_b5_002_a4_0015` point is retained mainly as a lightweight comparison point.
   - `rf09_h09_b5_002_a4_0015`
 - 已经确认的两种有效迁移模式是：
   - 已验证 family 上的 **directional exploitation**
@@ -134,6 +136,7 @@ coad/
 - `runners/run_stage4_validation_ab_v7.m`
 - `runners/run_stage4_validation_ab_v8.m`
 - `runners/run_stage4_validation_ab_v9.m`
+- `runners/run_stage4_validation_ab_ga_v1.m`
 - `runners/run_stage4_validation_ab_v10.m`
 
 这些 runner 的共同作用是：
@@ -169,6 +172,12 @@ coad/
 
 ### `v10`
 - refined shortlist 版本
+
+### `v11` branch line
+- calibrated seed-discovery scoring on top of `v10`
+- diversity-aware validation manifests
+- a whitelist-only conservative local GA tuner
+- current whitelist example: `ep249_step33_contour_xy`
 - 主清单优先 `weak_positive / strong_positive`
 - `neutral` 只保留极少量 probe 名额
 
@@ -180,6 +189,14 @@ coad/
 2. 按需要重训 directional 或 seed-only 模型
 3. 构建并打分下一版 candidate pool
 4. 生成 validation manifest
+
+Current optional GA refinement path:
+- conservative local GA search: `stage3_training/run_parametric_ga_seed_search_v1.py`
+- shape whitelist: `stage3_training/ga_shape_whitelist_v1.json`
+- GA manifest: `stage3_training/build_ga_validation_manifest_v1.py`
+- COMSOL validation: `runners/run_stage4_validation_ab_ga_v1.m`
+
+The GA module is not intended to replace the main `v10` workflow. It is a whitelist-only post-ranking local tuner.
 5. 用对应的 `stage4_validation_ab_v*.m` 跑 COMSOL
 6. 分析 arm / point / shape 汇总表
 
