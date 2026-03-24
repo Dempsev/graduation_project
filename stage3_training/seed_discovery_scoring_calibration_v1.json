@@ -1,0 +1,17 @@
+{
+  "version": "seed_discovery_scoring_calibration_v1",
+  "recommended": {
+    "contact_threshold": 0.005,
+    "positive_threshold": 0.5,
+    "contact_weight": 0.7,
+    "positive_weight": 0.3,
+    "reg_min": 0.0,
+    "top_k": 8,
+    "recall_floor": 0.6,
+    "selection_target": "contact_valid_and_positive_gap_gain",
+    "source_tags": [
+      "v9",
+      "v10"
+    ]
+  }
+}

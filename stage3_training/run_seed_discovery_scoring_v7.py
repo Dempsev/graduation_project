@@ -1,6 +1,7 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
 from typing import Dict, List
 
@@ -29,9 +30,44 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--run-name', default='seed_discovery_scoring_v7')
     parser.add_argument('--contact-threshold', type=float, default=0.50)
     parser.add_argument('--positive-threshold', type=float, default=0.50)
+    parser.add_argument('--contact-weight', type=float, default=0.70)
+    parser.add_argument('--positive-weight', type=float, default=0.30)
+    parser.add_argument('--calibration-json', type=Path, default=None)
     parser.add_argument('--reg-min', type=float, default=0.0)
     parser.add_argument('--top-k', type=int, default=12)
     return parser.parse_args()
+
+
+def load_json(path: Path) -> Dict[str, object]:
+    if not path.exists():
+        raise FileNotFoundError(path)
+    return json.loads(path.read_text(encoding='utf-8-sig'))
+
+
+def resolve_scoring_settings(args: argparse.Namespace) -> Dict[str, object]:
+    settings = {
+        'contact_threshold': float(args.contact_threshold),
+        'positive_threshold': float(args.positive_threshold),
+        'contact_weight': float(args.contact_weight),
+        'positive_weight': float(args.positive_weight),
+        'reg_min': float(args.reg_min),
+        'calibration_json': str(args.calibration_json) if args.calibration_json else '',
+        'calibration_version': '',
+    }
+    if args.calibration_json:
+        payload = load_json(args.calibration_json)
+        recommended = payload.get('recommended', payload)
+        for key in ['contact_threshold', 'positive_threshold', 'contact_weight', 'positive_weight', 'reg_min']:
+            if key in recommended and recommended[key] is not None:
+                settings[key] = float(recommended[key])
+        settings['calibration_version'] = str(payload.get('version', recommended.get('version', '')))
+
+    total_weight = float(settings['contact_weight']) + float(settings['positive_weight'])
+    if total_weight <= 0:
+        raise ValueError('contact_weight + positive_weight must be positive.')
+    settings['contact_weight'] = float(settings['contact_weight']) / total_weight
+    settings['positive_weight'] = float(settings['positive_weight']) / total_weight
+    return settings
 
 
 def load_checkpoint(run_root: Path, split_name: str) -> Dict[str, object]:
@@ -111,20 +147,22 @@ def predict_regressor(frame: pd.DataFrame, run_root: Path, split_name: str) -> n
     return pred_scaled * y_std + y_mean
 
 
-def assign_scores(df: pd.DataFrame, args: argparse.Namespace) -> pd.DataFrame:
+def assign_scores(df: pd.DataFrame, settings: Dict[str, object]) -> pd.DataFrame:
     df = df.copy()
     tier_map = {'strong_positive': 2, 'weak_positive': 1, 'neutral_or_baseline_like': 0}
     df['stage1_reference_gap_gain_Hz'] = pd.to_numeric(df.get('stage1_reference_gap_gain_Hz'), errors='coerce').fillna(-1.0)
     df['stage1_reference_contact_length'] = pd.to_numeric(df.get('stage1_reference_contact_length'), errors='coerce').fillna(-1.0)
     df['stage1_candidate_tier_rank'] = df.get('stage1_reference_candidate_tier', '').astype(str).map(tier_map).fillna(-1).astype(int)
-    df['contact_threshold'] = args.contact_threshold
-    df['positive_threshold'] = args.positive_threshold
+    df['contact_threshold'] = float(settings['contact_threshold'])
+    df['positive_threshold'] = float(settings['positive_threshold'])
+    df['contact_weight'] = float(settings['contact_weight'])
+    df['positive_weight'] = float(settings['positive_weight'])
     df['contact_gate'] = df['contact_prob'] >= df['contact_threshold']
     df['positive_gate'] = df['positive_prob'] >= df['positive_threshold']
-    df['reg_positive_gate'] = df['surrogate_pred_gap34_gain_Hz'] > args.reg_min
+    df['reg_positive_gate'] = df['surrogate_pred_gap34_gain_Hz'] > float(settings['reg_min'])
     df['cascade_gate'] = df['contact_gate'] & df['positive_gate']
     df['class_score'] = df['contact_prob'] * df['positive_prob']
-    df['cascade_score'] = 0.7 * df['contact_prob'] + 0.3 * df['positive_prob']
+    df['cascade_score'] = df['contact_weight'] * df['contact_prob'] + df['positive_weight'] * df['positive_prob']
     return df
 
 
@@ -188,6 +226,7 @@ def compute_gate_metrics(df: pd.DataFrame, top_k: int) -> Dict[str, object]:
 
 def main() -> None:
     args = parse_args()
+    settings = resolve_scoring_settings(args)
     df = pd.read_csv(args.dataset)
     if df.empty:
         raise RuntimeError(f'Empty dataset: {args.dataset}')
@@ -196,7 +235,7 @@ def main() -> None:
     df['contact_prob'] = predict_classifier_rows(df, args.contact_run_root, args.contact_split)
     df['positive_prob'] = predict_classifier_rows(df, args.positive_run_root, args.positive_split)
     df['surrogate_pred_gap34_gain_Hz'] = predict_regressor(df, args.reg_run_root, args.reg_split)
-    df = assign_scores(df, args)
+    df = assign_scores(df, settings)
 
     run_dir = DEFAULT_OUT_ROOT / args.run_name
     run_dir.mkdir(parents=True, exist_ok=True)
@@ -213,12 +252,16 @@ def main() -> None:
         'positive_split': args.positive_split,
         'reg_run_root': str(args.reg_run_root),
         'reg_split': args.reg_split,
-        'contact_threshold': args.contact_threshold,
-        'positive_threshold': args.positive_threshold,
-        'reg_min': args.reg_min,
+        'contact_threshold': settings['contact_threshold'],
+        'positive_threshold': settings['positive_threshold'],
+        'contact_weight': settings['contact_weight'],
+        'positive_weight': settings['positive_weight'],
+        'reg_min': settings['reg_min'],
+        'calibration_json': settings['calibration_json'],
+        'calibration_version': settings['calibration_version'],
         'top_k': args.top_k,
         'base_model_version': 'v7_seed_discovery',
-        'score_definition': 'stage1-aware seed discovery: model scores first, stage1 baseline as tie-breaker, surrogate for annotation',
+        'score_definition': 'stage1-aware seed discovery: calibrated cascade score with model scores first, stage1 baseline as tie-breaker, surrogate for annotation',
     }
 
     df.to_csv(run_dir / 'seed_discovery_predictions.csv', index=False, encoding='utf-8-sig')
@@ -230,6 +273,7 @@ def main() -> None:
 
     print('[DONE] stage1-aware seed discovery scoring complete')
     print(f'[RUN] {run_dir}')
+    print(f"[SETTINGS] contact_threshold={settings['contact_threshold']:.6g} positive_threshold={settings['positive_threshold']:.6g} contact_weight={settings['contact_weight']:.3f} positive_weight={settings['positive_weight']:.3f}")
     print(f"[GATE] kept={metrics['rows_cascade_gate']}/{metrics['rows_total']} rate={metrics['cascade_gate_rate']:.4f}")
 
 

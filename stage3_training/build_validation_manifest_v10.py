@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import argparse
 import csv
@@ -40,6 +40,9 @@ def parse_args() -> argparse.Namespace:
     parser.add_argument('--out-dir', type=Path, default=DEFAULT_OUT_DIR)
     parser.add_argument('--primary-k', type=int, default=6)
     parser.add_argument('--probe-k', type=int, default=2)
+    parser.add_argument('--diversity-k', type=int, default=0)
+    parser.add_argument('--max-per-shape', type=int, default=0)
+    parser.add_argument('--max-per-family', type=int, default=0)
     return parser.parse_args()
 
 
@@ -61,6 +64,11 @@ def prepare_frame(df: pd.DataFrame) -> pd.DataFrame:
     tier_map = {'strong_positive': 2, 'weak_positive': 1, 'neutral_or_baseline_like': 0}
     for col in ['contact_prob', 'positive_prob', 'cascade_score', 'class_score', 'surrogate_pred_gap34_gain_Hz', 'stage1_reference_gap_gain_Hz', 'stage1_reference_contact_length']:
         work[col] = pd.to_numeric(work[col], errors='coerce')
+    for col in ['cascade_gate', 'contact_gate', 'positive_gate', 'reg_positive_gate']:
+        if col in work.columns:
+            work[col] = pd.to_numeric(work[col], errors='coerce').fillna(0).astype(int)
+        else:
+            work[col] = 0
     work['stage1_candidate_tier_rank'] = work['stage1_reference_candidate_tier'].astype(str).map(tier_map).fillna(-1).astype(int)
     work['selection_bucket'] = work['stage1_reference_candidate_tier'].astype(str).map(lambda x: 'primary' if x in PRIMARY_TIERS else ('probe' if x in PROBE_TIERS else 'other'))
     return work
@@ -68,26 +76,107 @@ def prepare_frame(df: pd.DataFrame) -> pd.DataFrame:
 
 def sort_primary(df: pd.DataFrame) -> pd.DataFrame:
     return df.sort_values(
-        ['contact_prob', 'stage1_candidate_tier_rank', 'stage1_reference_gap_gain_Hz', 'surrogate_pred_gap34_gain_Hz', 'stage1_reference_contact_length'],
-        ascending=[False, False, False, False, False],
+        ['cascade_gate', 'contact_prob', 'stage1_candidate_tier_rank', 'stage1_reference_gap_gain_Hz', 'surrogate_pred_gap34_gain_Hz', 'stage1_reference_contact_length'],
+        ascending=[False, False, False, False, False, False],
     ).copy()
 
 
 def sort_probe(df: pd.DataFrame) -> pd.DataFrame:
     return df.sort_values(
-        ['contact_prob', 'stage1_reference_gap_gain_Hz', 'surrogate_pred_gap34_gain_Hz', 'stage1_reference_contact_length'],
-        ascending=[False, False, False, False],
+        ['cascade_gate', 'contact_prob', 'stage1_reference_gap_gain_Hz', 'surrogate_pred_gap34_gain_Hz', 'stage1_reference_contact_length'],
+        ascending=[False, False, False, False, False],
     ).copy()
 
 
-def build_selection(df: pd.DataFrame, primary_k: int, probe_k: int) -> pd.DataFrame:
-    primary = sort_primary(df[df['selection_bucket'] == 'primary']).head(max(primary_k, 0)).copy()
-    probe = sort_probe(df[df['selection_bucket'] == 'probe']).head(max(probe_k, 0)).copy()
-    combined = pd.concat([primary, probe], ignore_index=True)
-    combined['bucket_priority'] = combined['selection_bucket'].map({'primary': 0, 'probe': 1}).fillna(9)
+def can_take(row: pd.Series, shape_counts: Dict[str, int], family_counts: Dict[str, int], max_per_shape: int, max_per_family: int) -> bool:
+    shape_id = str(row.get('shape_id', ''))
+    family_id = str(row.get('shape_family', ''))
+    if max_per_shape > 0 and shape_counts.get(shape_id, 0) >= max_per_shape:
+        return False
+    if max_per_family > 0 and family_counts.get(family_id, 0) >= max_per_family:
+        return False
+    return True
+
+
+def register_selection(row: pd.Series, bucket: str, sample_ids: set[str], shape_counts: Dict[str, int], family_counts: Dict[str, int], point_counts: Dict[str, int]) -> Dict[str, object]:
+    item = row.to_dict()
+    item['selection_bucket'] = bucket
+    sample_id = str(row['sample_id'])
+    shape_id = str(row.get('shape_id', ''))
+    family_id = str(row.get('shape_family', ''))
+    point_id = str(row.get('point_id', ''))
+    sample_ids.add(sample_id)
+    shape_counts[shape_id] = shape_counts.get(shape_id, 0) + 1
+    family_counts[family_id] = family_counts.get(family_id, 0) + 1
+    point_counts[point_id] = point_counts.get(point_id, 0) + 1
+    return item
+
+
+def take_rows(sorted_df: pd.DataFrame, limit: int, bucket: str, sample_ids: set[str], shape_counts: Dict[str, int], family_counts: Dict[str, int], point_counts: Dict[str, int], max_per_shape: int, max_per_family: int) -> List[Dict[str, object]]:
+    rows: List[Dict[str, object]] = []
+    if limit <= 0:
+        return rows
+    for _, row in sorted_df.iterrows():
+        sample_id = str(row['sample_id'])
+        if sample_id in sample_ids:
+            continue
+        if not can_take(row, shape_counts, family_counts, max_per_shape, max_per_family):
+            continue
+        rows.append(register_selection(row, bucket, sample_ids, shape_counts, family_counts, point_counts))
+        if len(rows) >= limit:
+            break
+    return rows
+
+
+def sort_diversity(df: pd.DataFrame, point_counts: Dict[str, int], family_counts: Dict[str, int]) -> pd.DataFrame:
+    work = df.copy()
+    work['diversity_new_point'] = work['point_id'].astype(str).map(lambda x: 1 if point_counts.get(x, 0) == 0 else 0)
+    work['diversity_new_family'] = work['shape_family'].astype(str).map(lambda x: 1 if family_counts.get(x, 0) == 0 else 0)
+    return work.sort_values(
+        ['diversity_new_point', 'diversity_new_family', 'cascade_gate', 'contact_prob', 'stage1_candidate_tier_rank', 'surrogate_pred_gap34_gain_Hz', 'stage1_reference_gap_gain_Hz'],
+        ascending=[False, False, False, False, False, False, False],
+    ).copy()
+
+
+def take_diversity_rows(df: pd.DataFrame, limit: int, sample_ids: set[str], shape_counts: Dict[str, int], family_counts: Dict[str, int], point_counts: Dict[str, int], max_per_shape: int, max_per_family: int) -> List[Dict[str, object]]:
+    rows: List[Dict[str, object]] = []
+    if limit <= 0:
+        return rows
+    while len(rows) < limit:
+        remaining = df[~df['sample_id'].astype(str).isin(sample_ids)].copy()
+        if remaining.empty:
+            break
+        sorted_df = sort_diversity(remaining, point_counts, family_counts)
+        picked = False
+        for _, row in sorted_df.iterrows():
+            if not can_take(row, shape_counts, family_counts, max_per_shape, max_per_family):
+                continue
+            rows.append(register_selection(row, 'diversity', sample_ids, shape_counts, family_counts, point_counts))
+            picked = True
+            break
+        if not picked:
+            break
+    return rows
+
+
+def build_selection(df: pd.DataFrame, primary_k: int, probe_k: int, diversity_k: int, max_per_shape: int, max_per_family: int) -> pd.DataFrame:
+    sample_ids: set[str] = set()
+    shape_counts: Dict[str, int] = {}
+    family_counts: Dict[str, int] = {}
+    point_counts: Dict[str, int] = {}
+
+    selected_rows: List[Dict[str, object]] = []
+    selected_rows.extend(take_rows(sort_primary(df[df['selection_bucket'] == 'primary']), primary_k, 'primary', sample_ids, shape_counts, family_counts, point_counts, max_per_shape, max_per_family))
+    selected_rows.extend(take_rows(sort_probe(df[df['selection_bucket'] == 'probe']), probe_k, 'probe', sample_ids, shape_counts, family_counts, point_counts, max_per_shape, max_per_family))
+    selected_rows.extend(take_diversity_rows(df, diversity_k, sample_ids, shape_counts, family_counts, point_counts, max_per_shape, max_per_family))
+
+    combined = pd.DataFrame(selected_rows)
+    if combined.empty:
+        return combined
+    combined['bucket_priority'] = combined['selection_bucket'].map({'primary': 0, 'probe': 1, 'diversity': 2}).fillna(9)
     combined = combined.sort_values(
-        ['bucket_priority', 'contact_prob', 'stage1_candidate_tier_rank', 'stage1_reference_gap_gain_Hz', 'surrogate_pred_gap34_gain_Hz'],
-        ascending=[True, False, False, False, False],
+        ['bucket_priority', 'cascade_gate', 'contact_prob', 'stage1_candidate_tier_rank', 'stage1_reference_gap_gain_Hz', 'surrogate_pred_gap34_gain_Hz'],
+        ascending=[True, False, False, False, False, False],
     ).copy()
     return combined
 
@@ -107,13 +196,19 @@ def main() -> None:
         raise RuntimeError('Scored candidate pool is empty.')
 
     work = prepare_frame(df)
-    selected = build_selection(work, args.primary_k, args.probe_k)
-    cascade_order = pd.concat([sort_primary(work), sort_probe(work)], ignore_index=True)
+    selected = build_selection(work, args.primary_k, args.probe_k, args.diversity_k, args.max_per_shape, args.max_per_family)
+    if selected.empty:
+        raise RuntimeError('No validation rows selected.')
+
+    cascade_order = work.sort_values(
+        ['cascade_gate', 'contact_prob', 'stage1_candidate_tier_rank', 'stage1_reference_gap_gain_Hz', 'surrogate_pred_gap34_gain_Hz'],
+        ascending=[False, False, False, False, False],
+    ).copy()
     cascade_rank_map = {str(sample_id): idx for idx, sample_id in enumerate(cascade_order['sample_id'].astype(str), start=1)}
     surrogate_rank_map = {str(sample_id): idx for idx, sample_id in enumerate(sort_for_surrogate(work)['sample_id'].astype(str), start=1)}
 
     manifest_rows: List[Dict[str, object]] = []
-    label = f'seed_only_refined_primary_{len(selected[selected["selection_bucket"]=="primary"])}_probe_{len(selected[selected["selection_bucket"]=="probe"])}'
+    label = f'seed_only_refined_primary_{int((selected["selection_bucket"] == "primary").sum())}_probe_{int((selected["selection_bucket"] == "probe").sum())}_diversity_{int((selected["selection_bucket"] == "diversity").sum())}'
     for idx, (_, row) in enumerate(selected.iterrows(), start=1):
         item = row.to_dict()
         item['validation_id'] = f'val{idx:03d}'
@@ -136,18 +231,25 @@ def main() -> None:
         'scored_csv': str(args.scored_csv),
         'primary_k': args.primary_k,
         'probe_k': args.probe_k,
+        'diversity_k': args.diversity_k,
+        'max_per_shape': args.max_per_shape,
+        'max_per_family': args.max_per_family,
         'manifest_rows': len(manifest_rows),
         'primary_rows': int((selected['selection_bucket'] == 'primary').sum()),
         'probe_rows': int((selected['selection_bucket'] == 'probe').sum()),
+        'diversity_rows': int((selected['selection_bucket'] == 'diversity').sum()),
         'strong_positive_count': int((selected['stage1_reference_candidate_tier'].astype(str) == 'strong_positive').sum()),
         'weak_positive_count': int((selected['stage1_reference_candidate_tier'].astype(str) == 'weak_positive').sum()),
         'neutral_count': int((selected['stage1_reference_candidate_tier'].astype(str) == 'neutral_or_baseline_like').sum()),
+        'unique_shape_count': int(selected['shape_id'].astype(str).nunique()),
+        'unique_family_count': int(selected['shape_family'].astype(str).nunique()),
+        'unique_point_count': int(selected['point_id'].astype(str).nunique()),
     }
     summary_json.write_text(json.dumps(summary, indent=2, ensure_ascii=False), encoding='utf-8')
 
     print('[DONE] validation manifest v10 built')
     print(f'[OUT] {manifest_csv}')
-    print(f'[SUMMARY] total={len(manifest_rows)} primary={summary["primary_rows"]} probe={summary["probe_rows"]}')
+    print(f'[SUMMARY] total={len(manifest_rows)} primary={summary["primary_rows"]} probe={summary["probe_rows"]} diversity={summary["diversity_rows"]} unique_shapes={summary["unique_shape_count"]}')
 
 
 if __name__ == '__main__':
