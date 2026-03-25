@@ -14,6 +14,7 @@ DEFAULT_TOP_K = 8
 DEFAULT_RECALL_FLOOR = 0.60
 DEFAULT_CONTACT_WEIGHT = 0.70
 DEFAULT_POSITIVE_WEIGHT = 0.30
+DEFAULT_SYNC_JSON = ROOT / 'stage3_training' / 'seed_discovery_scoring_calibration_v1.json'
 
 DEFAULT_SOURCES = [
     {
@@ -34,15 +35,23 @@ OPTIONAL_V8_SOURCE = {
     'validation_csv': ROOT / 'data' / 'comsol_batch' / 'stage4_validation_ab_v8' / 'stage4_validation_results.csv',
 }
 
+OPTIONAL_GA_SOURCE = {
+    'tag': 'ga_v1',
+    'scored_csv': ROOT / 'data' / 'ml_runs' / 'candidate_pool_seed_discovery_v10' / 'ga_parametric_search_v1' / 'ga_candidate_manifest_v1.csv',
+    'validation_csv': ROOT / 'data' / 'comsol_batch' / 'stage4_validation_ab_ga_v1' / 'stage4_validation_results.csv',
+}
+
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Calibrate seed discovery thresholds from historical stage4 validation results.')
     parser.add_argument('--out-dir', type=Path, default=DEFAULT_OUT_DIR)
     parser.add_argument('--include-v8', action='store_true')
+    parser.add_argument('--skip-ga', action='store_true')
     parser.add_argument('--top-k', type=int, default=DEFAULT_TOP_K)
     parser.add_argument('--recall-floor', type=float, default=DEFAULT_RECALL_FLOOR)
     parser.add_argument('--default-contact-weight', type=float, default=DEFAULT_CONTACT_WEIGHT)
     parser.add_argument('--default-positive-weight', type=float, default=DEFAULT_POSITIVE_WEIGHT)
+    parser.add_argument('--sync-json', type=Path, default=None)
     return parser.parse_args()
 
 
@@ -97,10 +106,25 @@ def build_dataset(args: argparse.Namespace) -> Tuple[pd.DataFrame, List[Dict[str
     sources = list(DEFAULT_SOURCES)
     if args.include_v8:
         sources = [OPTIONAL_V8_SOURCE, *sources]
+    if not args.skip_ga:
+        sources.append(OPTIONAL_GA_SOURCE)
 
     frames: List[pd.DataFrame] = []
     source_rows: List[Dict[str, object]] = []
     for source in sources:
+        scored_csv = Path(source['scored_csv'])
+        validation_csv = Path(source['validation_csv'])
+        if not scored_csv.exists() or not validation_csv.exists():
+            source_rows.append({
+                'tag': source['tag'],
+                'scored_csv': str(scored_csv),
+                'validation_csv': str(validation_csv),
+                'rows': 0,
+                'joint_positive_rate': 0.0,
+                'loaded': False,
+            })
+            continue
+
         frame = load_source_rows(source)
         frames.append(frame)
         source_rows.append({
@@ -109,6 +133,7 @@ def build_dataset(args: argparse.Namespace) -> Tuple[pd.DataFrame, List[Dict[str
             'validation_csv': str(source['validation_csv']),
             'rows': int(len(frame)),
             'joint_positive_rate': float(frame['target_joint'].mean()) if len(frame) else 0.0,
+            'loaded': True,
         })
 
     if not frames:
@@ -250,11 +275,13 @@ def build_summary(df: pd.DataFrame) -> Dict[str, object]:
 def main() -> None:
     args = parse_args()
     ensure_dir(args.out_dir)
+    sync_json = args.sync_json if args.sync_json is not None else DEFAULT_SYNC_JSON
 
     df, source_rows = build_dataset(args)
     dataset_summary = build_summary(df)
     best_gate, gate_top = search_gate(df, args.recall_floor)
     best_weight, weight_top = search_weights(df, args.top_k, args.default_contact_weight, args.default_positive_weight)
+    loaded_tags = [item['tag'] for item in source_rows if item.get('loaded')]
 
     recommended = {
         'contact_threshold': float(best_gate['contact_threshold']),
@@ -265,7 +292,7 @@ def main() -> None:
         'top_k': int(args.top_k),
         'recall_floor': float(args.recall_floor),
         'selection_target': 'contact_valid_and_positive_gap_gain',
-        'source_tags': [item['tag'] for item in source_rows],
+        'source_tags': loaded_tags,
     }
 
     report = {
@@ -286,11 +313,13 @@ def main() -> None:
     df.to_csv(joined_csv, index=False, encoding='utf-8-sig')
     report_json.write_text(json.dumps(report, indent=2, ensure_ascii=False), encoding='utf-8')
     recommended_json.write_text(json.dumps({'recommended': recommended}, indent=2, ensure_ascii=False), encoding='utf-8')
+    sync_json.write_text(json.dumps({'version': 'seed_discovery_scoring_calibration_v1', 'recommended': recommended}, indent=2, ensure_ascii=False), encoding='utf-8')
 
     print('[DONE] seed discovery scoring calibration complete')
     print(f'[OUT] {joined_csv}')
     print(f'[OUT] {report_json}')
     print(f'[OUT] {recommended_json}')
+    print(f'[SYNC] {sync_json}')
     print(f"[RECOMMENDED] contact_threshold={recommended['contact_threshold']:.6g} positive_threshold={recommended['positive_threshold']:.6g} contact_weight={recommended['contact_weight']:.3f} positive_weight={recommended['positive_weight']:.3f}")
 
 
