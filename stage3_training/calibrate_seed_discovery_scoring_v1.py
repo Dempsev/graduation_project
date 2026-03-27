@@ -27,6 +27,11 @@ DEFAULT_SOURCES = [
         'scored_csv': ROOT / 'data' / 'ml_runs' / 'candidate_pool_seed_discovery_v10' / 'seed_discovery_predictions.csv',
         'validation_csv': ROOT / 'data' / 'comsol_batch' / 'stage4_validation_ab_v10' / 'stage4_validation_results.csv',
     },
+    {
+        'tag': 'v11',
+        'scored_csv': ROOT / 'data' / 'ml_runs' / 'candidate_pool_seed_discovery_v11' / 'seed_discovery_predictions.csv',
+        'validation_csv': ROOT / 'data' / 'comsol_batch' / 'stage4_validation_ab_v11' / 'stage4_validation_results.csv',
+    },
 ]
 
 OPTIONAL_V8_SOURCE = {

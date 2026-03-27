@@ -12,7 +12,7 @@ The project is not a single surrogate-model demo. It is a closed loop that combi
 4. cascade-style candidate ranking
 5. physical re-validation back in COMSOL
 
-The current codebase preserves the full iteration history from `v1` to `v10`, plus the latest `v11`-style refinement branches that extend `v10` with calibrated scoring, diversity-aware manifesting, and a tightly constrained GA local tuner. The repository is organized around the research finding that **broad-transfer points do not generalize reliably, while targeted exploitation does**.
+The current codebase preserves the full iteration history from `v1` onward and now converges on a finalized mainline built around the `v10` seed-only workflow plus its later refinements: calibrated scoring, diversity-aware manifesting, a completion pass over the remaining stage1-positive families, and a tightly constrained GA local tuner. The repository is organized around the research finding that **broad-transfer points do not generalize reliably, while targeted exploitation does**.
 
 ## Current Research Status
 
@@ -28,6 +28,10 @@ The main thesis storyline is now stable.
   - **seed-only discovery** on unseen families
 - Across the later validation rounds, the most reliable new-family entry point is currently:
   - `stage1 weak_positive` seeds
+- The original stage1-positive family library from the snake-generated shape bank has now been exhausted on the mainline:
+  - all `54` stage1-positive families have been physically covered through the combined `v10` + `v11` completion passes
+- The practical conclusion is now sharper:
+  - the mainline should be treated as complete on the current library unless new shapes / new families are generated
 
 In other words, this repository now reflects a **family-aware / step-aware targeted exploitation workflow**, not a global blind search workflow.
 
@@ -172,9 +176,11 @@ These runners:
 - refined shortlist strategy
 - prioritized `weak_positive` / `strong_positive` seeds and reduced neutral seeds to small probe slots
 
-### `v11` branch line
+### `v11` mainline completion
+- folded the later refinement branch back into the main seed-only workflow
 - expanded `v10` from a single trusted point into a small point cluster, then re-centered the main line on `rf09_h00_center`
 - added calibrated seed-discovery scoring and diversity-aware manifest selection
+- completed the remaining stage1-positive family coverage pass on the original snake-generated shape library
 - added a **conditional local GA tuner** that only activates on shapes that have already shown real COMSOL benefit under conservative local tuning
 - current whitelist example: `ep249_step33_contour_xy`, where the local tuner slightly outperformed the plain `rf09_h00_center` baseline in physical validation
 
@@ -183,18 +189,26 @@ These runners:
 If continuing the thesis from the current state, the recommended operational sequence is:
 
 1. Update / rebuild the training dataset if new physical truth has been added.
-2. Retrain the seed-discovery or directional models as needed.
-3. Build and score the next candidate pool.
-4. Generate a validation manifest.
-5. Run COMSOL validation with the matching `stage4_validation_ab_v*.m` runner.
-6. Analyze the resulting arm / point / shape summaries.
+2. Refresh the seed-discovery scoring calibration from the latest historical stage4 truth.
+3. Retrain the seed-discovery or directional models as needed.
+4. Build and score the next candidate pool.
+5. Generate a validation manifest.
+6. Run COMSOL validation with the matching `stage4_validation_ab_v*.m` runner.
+7. Analyze the resulting arm / point / shape summaries and feed the new truth back into the next calibration refresh.
 
-For the current repository state, the latest seed-only refined path is:
+For the current repository state, the mainline seed-only path is:
 
 - candidate pool: `stage3_training/build_candidate_pool_v10.py`
 - scoring: `stage3_training/run_seed_discovery_scoring_v7.py`
 - manifest: `stage3_training/build_validation_manifest_v10.py`
 - COMSOL validation: `runners/run_stage4_validation_ab_v10.m`
+
+The `v11` completion pass should be interpreted as a **library-closing extension of the same mainline**, not as a separate research branch:
+
+- remaining-family candidate pool: `stage3_training/build_candidate_pool_v11.py`
+- remaining-family scoring: `stage3_training/run_seed_discovery_scoring_v7.py`
+- remaining-family manifest: `stage3_training/build_validation_manifest_v11.py`
+- remaining-family COMSOL validation: `runners/run_stage4_validation_ab_v11.m`
 
 For the current optional GA refinement branch, the operational path is:
 
@@ -203,7 +217,13 @@ For the current optional GA refinement branch, the operational path is:
 - GA validation manifest: `stage3_training/build_ga_validation_manifest_v1.py`
 - COMSOL validation: `runners/run_stage4_validation_ab_ga_v1.m`
 
-The intended role of the GA module is **not** to replace the main `v10` seed-only workflow. It is a conditional post-ranking local tuner that is only enabled for shape families that have already demonstrated real COMSOL upside under very small parameter perturbations.
+The intended role of the GA module is **not** to replace the main seed-only workflow. It is a conditional post-ranking local tuner that is only enabled for shape families that have already demonstrated real COMSOL upside under very small parameter perturbations.
+
+If no new teacher requirements arrive, the repository can now be treated as **temporarily frozen at a complete milestone** for the current snake-generated shape library:
+
+- the mainline has covered all stage1-positive families available in the current library
+- GA remains an optional supporting branch rather than a required next step
+- further expansion would require either new shape generation or a new research question
 
 ## Environment
 

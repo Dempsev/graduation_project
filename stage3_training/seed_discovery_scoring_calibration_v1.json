@@ -1,7 +1,7 @@
 {
   "version": "seed_discovery_scoring_calibration_v1",
   "recommended": {
-    "contact_threshold": 0.1,
+    "contact_threshold": 0.01,
     "positive_threshold": 0.5,
     "contact_weight": 0.7000000000000001,
     "positive_weight": 0.29999999999999993,
@@ -12,6 +12,7 @@
     "source_tags": [
       "v9",
       "v10",
+      "v11",
       "ga_v1"
     ]
   }
