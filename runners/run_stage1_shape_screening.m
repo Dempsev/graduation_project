@@ -30,6 +30,7 @@ processedIds = string(get_processed_ids(results));
 
 fprintf('Stage-1 shape screening\n');
 fprintf('Trusted mother: %s\n', cfg.fourierId);
+fprintf('Material profile: %s\n', cfg.materialProfile);
 fprintf('Material case: %s\n', cfg.materialCase);
 fprintf('Shape source: %s\n', cfg.shapeDir);
 fprintf('Output dir: %s\n', cfg.outDir);
@@ -310,3 +311,4 @@ else
     s = sprintf('%.6g', v);
 end
 end
+

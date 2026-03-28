@@ -1,4 +1,4 @@
-function result = evaluate_single_shape(cfg, shapeFile, baselineRef)
+﻿function result = evaluate_single_shape(cfg, shapeFile, baselineRef)
 %EVALUATE_SINGLE_SHAPE Evaluate one stage-1 sample against the trusted mother.
 % Returns a single structured result row. Invalid geometry / no-contact /
 % solve failures are returned as non-crashing records so the batch can keep
@@ -28,7 +28,7 @@ if ~result.geometry_valid || ~result.contact_valid
 end
 
 try
-    model = set_material_03(model);
+    model = set_material_03(model, cfg);
     model = set_physics_04(model);
     model = set_mesh_05(model);
     model = set_study_06(model);
@@ -136,3 +136,4 @@ switch fieldName
         value = NaN;
 end
 end
+

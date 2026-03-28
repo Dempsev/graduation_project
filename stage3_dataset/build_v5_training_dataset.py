@@ -3,9 +3,16 @@
 import json
 import math
 import re
+import sys
 from pathlib import Path
 from typing import Dict, List
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from objective_registry import DEFAULT_OBJECTIVE_NAME, objective_choices
+from dataset_profiles import get_dataset_profile
 import build_v4_training_dataset as prev
 import build_v1_training_dataset as base
 
@@ -15,33 +22,11 @@ TASKS_DIR = OUT_DIR / 'tasks'
 FIXED_GAP_BAND = base.FIXED_GAP_BAND
 SHAPE_FEATURE_FIELDS = base.SHAPE_FEATURE_FIELDS
 
-STAGES = [
-    *prev.STAGES,
-    {
-        'name': 'stage4_validation_v5',
-        'results_csv': ROOT / 'data' / 'comsol_batch' / 'stage4_validation_ab_v5' / 'stage4_validation_results.csv',
-        'tbl1_dir': ROOT / 'data' / 'comsol_batch' / 'stage4_validation_ab_v5' / 'tbl1_exports',
-        'baseline_mode': 'by_point',
-        'baseline_csv': ROOT / 'data' / 'comsol_batch' / 'stage4_validation_ab_v5' / 'baseline_by_point.csv',
-        'baseline_tbl1_dir': ROOT / 'data' / 'comsol_batch' / 'stage4_validation_ab_v5' / 'tbl1_exports',
-    },
-    {
-        'name': 'stage4_validation_v6',
-        'results_csv': ROOT / 'data' / 'comsol_batch' / 'stage4_validation_ab_v6' / 'stage4_validation_results.csv',
-        'tbl1_dir': ROOT / 'data' / 'comsol_batch' / 'stage4_validation_ab_v6' / 'tbl1_exports',
-        'baseline_mode': 'by_point',
-        'baseline_csv': ROOT / 'data' / 'comsol_batch' / 'stage4_validation_ab_v6' / 'baseline_by_point.csv',
-        'baseline_tbl1_dir': ROOT / 'data' / 'comsol_batch' / 'stage4_validation_ab_v6' / 'tbl1_exports',
-        'manifest_csv': ROOT / 'data' / 'ml_runs' / 'candidate_pool_cascade_v6' / 'validation_manifest_v6' / 'comsol_validation_manifest_v6.csv',
-    },
-]
-
-SURROGATE_CORE_STAGES = [
-    'stage2', 'stage2_refine', 'stage2_harmonics', 'stage2_harmonics_refine',
-    'stage4_validation_v1', 'stage4_validation_v2', 'stage4_validation_v3', 'stage4_validation_v5', 'stage4_validation_v6',
-]
-PARAM_CLASSIFICATION_STAGES = SURROGATE_CORE_STAGES
-SPECIALCASE_SHAPE_FAMILIES = {'ep209'}
+PROFILE = get_dataset_profile('training_dataset_v5_mainline')
+STAGES = [*prev.STAGES, *PROFILE['stages']]
+SURROGATE_CORE_STAGES = list(PROFILE['surrogate_core_stage_names'])
+PARAM_CLASSIFICATION_STAGES = list(PROFILE['param_classification_stage_names'])
+SPECIALCASE_SHAPE_FAMILIES = set(PROFILE['specialcase_shape_families'])
 
 MASTER_CSV = OUT_DIR / 'master_dataset_v5.csv'
 REGRESSION_CSV = OUT_DIR / 'mlp_gap34_regression_v5.csv'
@@ -362,8 +347,12 @@ def build_task_datasets(rows: List[Dict[str, object]]) -> Dict[str, List[Dict[st
 
 def build_dataset_info(rows: List[Dict[str, object]], regression_rows: List[Dict[str, object]], stage_summary: List[Dict[str, object]], task_rows: Dict[str, List[Dict[str, object]]]) -> Dict[str, object]:
     return {
+        'dataset_profile': PROFILE['name'],
+        'stage_registry_stage_names': list(PROFILE['stage_names']),
         'label_definition': 'fixed_gap_band_3_4',
         'fixed_gap_band': FIXED_GAP_BAND,
+        'default_objective': DEFAULT_OBJECTIVE_NAME,
+        'supported_objectives': objective_choices(include_compat=False),
         'master_rows': len(rows),
         'regression_rows': len(regression_rows),
         'source_stages': [cfg['name'] for cfg in STAGES],
@@ -375,8 +364,8 @@ def build_dataset_info(rows: List[Dict[str, object]], regression_rows: List[Dict
             'shape_screening_positive_cls_v5': {'path': str(POSITIVE_TASK_CSV), 'rows': len(task_rows['positive_cls']), 'target': 'is_positive_shape', 'source_stages': ['stage1'], 'feature_preset': 'shape_only', 'row_filter': 'contact_valid=1 && solve_success=1'},
             'parametric_contact_cls_v5': {'path': str(PARAM_CONTACT_TASK_CSV), 'rows': len(task_rows['param_contact_cls']), 'target': 'contact_valid', 'source_stages': PARAM_CLASSIFICATION_STAGES, 'feature_presets': ['parametric_core', 'parametric_directional']},
             'parametric_positive_cls_v5': {'path': str(PARAM_POSITIVE_TASK_CSV), 'rows': len(task_rows['param_positive_cls']), 'target': 'is_positive_shape', 'source_stages': PARAM_CLASSIFICATION_STAGES, 'feature_presets': ['parametric_core', 'parametric_directional'], 'row_filter': 'contact_valid=1 && solve_success=1'},
-            'surrogate_regression_core_v5': {'path': str(SURROGATE_CORE_TASK_CSV), 'rows': len(task_rows['surrogate_core']), 'target': 'gap34_gain_Hz', 'source_stages': SURROGATE_CORE_STAGES, 'feature_presets': ['surrogate_core', 'surrogate_geo_augmented', 'surrogate_directional', 'surrogate_directional_geo_augmented'], 'row_filter': 'is_training_ready=1 && not special_case'},
-            'surrogate_regression_specialcase_v5': {'path': str(SURROGATE_SPECIALCASE_TASK_CSV), 'rows': len(task_rows['surrogate_specialcase']), 'target': 'gap34_gain_Hz', 'source_stages': SURROGATE_CORE_STAGES, 'feature_presets': ['surrogate_core', 'surrogate_geo_augmented', 'surrogate_directional', 'surrogate_directional_geo_augmented'], 'row_filter': 'shape_family in special_case_set && is_training_ready=1'},
+            'surrogate_regression_core_v5': {'path': str(SURROGATE_CORE_TASK_CSV), 'rows': len(task_rows['surrogate_core']), 'target': DEFAULT_OBJECTIVE_NAME, 'source_stages': SURROGATE_CORE_STAGES, 'feature_presets': ['surrogate_core', 'surrogate_geo_augmented', 'surrogate_directional', 'surrogate_directional_geo_augmented'], 'row_filter': 'is_training_ready=1 && not special_case'},
+            'surrogate_regression_specialcase_v5': {'path': str(SURROGATE_SPECIALCASE_TASK_CSV), 'rows': len(task_rows['surrogate_specialcase']), 'target': DEFAULT_OBJECTIVE_NAME, 'source_stages': SURROGATE_CORE_STAGES, 'feature_presets': ['surrogate_core', 'surrogate_geo_augmented', 'surrogate_directional', 'surrogate_directional_geo_augmented'], 'row_filter': 'shape_family in special_case_set && is_training_ready=1'},
         },
         'shape_feature_fields': SHAPE_FEATURE_FIELDS,
         'context_numeric_fields': CONTEXT_NUMERIC_FIELDS,

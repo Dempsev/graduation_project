@@ -1,0 +1,9 @@
+﻿{
+  "scored_csv": "data/ml_runs/candidate_pool_seed_discovery_v11/seed_discovery_predictions.csv",
+  "out_dir": "data/ml_runs/candidate_pool_seed_discovery_v11/validation_manifest_v11",
+  "primary_k": 2,
+  "probe_k": 3,
+  "diversity_k": 0,
+  "max_per_shape": 0,
+  "max_per_family": 1
+}

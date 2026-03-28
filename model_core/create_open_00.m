@@ -1,4 +1,4 @@
-import com.comsol.model.*
+﻿import com.comsol.model.*
 import com.comsol.model.util.*
 
 % Ensure this folder is on the path so dependencies resolve from any CWD.
@@ -12,6 +12,9 @@ if ~exist(dataDir, 'dir'); mkdir(dataDir); end
 
 ModelUtil.clear;
 ModelUtil.showProgress(true);
+materialProfile = resolve_material_profile_name('baseline_soft_hard');
+materialProfileInfo = get_material_profile(materialProfile);
+fprintf('Material profile: %s (%s)\\n', materialProfileInfo.name, materialProfileInfo.material_case);
 
 model = ModelUtil.create('Model');
 
@@ -37,7 +40,7 @@ if only_geom
 end
 
 % Materials
-model = set_material_03(model);
+model = set_material_03(model, materialProfileInfo);
 
 % Physics
 model = set_physics_04(model);
@@ -76,3 +79,7 @@ end
 
 fprintf('Eigenfrequency settings: neigs=%s, shift=%s\n', neigsValue, shiftValue);
 end
+
+
+
+

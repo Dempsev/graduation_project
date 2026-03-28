@@ -24,7 +24,8 @@ cfg.plotDir = fullfile(outDir, 'plots');
 cfg.bandPlotDir = fullfile(cfg.plotDir, 'band_diagrams');
 
 cfg.fourierId = 'stage1_trusted_baseline_v1';
-cfg.materialCase = 'soft_matrix_hard_inclusion';
+cfg.materialProfile = 'baseline_soft_hard';
+cfg = apply_material_profile_to_config(cfg);
 cfg.studyPName = {'k'};
 cfg.studyPListArr = {'range(0,3/(N-1),3)'};
 cfg.studyPUnit = {''};
@@ -97,6 +98,7 @@ cfg.resultFieldOrder = { ...
 
 cfg.configSignature = strjoin({ ...
     cfg.fourierId, ...
+    ['material_profile=' cfg.materialProfile], ...
     sprintf('a1=%.12g', cfg.paramNumeric.a1), ...
     sprintf('a2=%.12g', cfg.paramNumeric.a2), ...
     sprintf('b1=%.12g', cfg.paramNumeric.b1), ...
@@ -126,3 +128,5 @@ if ~exist(pathStr, 'dir')
     mkdir(pathStr);
 end
 end
+
+

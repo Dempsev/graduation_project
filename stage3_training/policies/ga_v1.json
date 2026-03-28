@@ -1,0 +1,57 @@
+﻿{
+  "search": {
+    "scored_csv": "data/ml_runs/candidate_pool_seed_discovery_v10/seed_discovery_predictions.csv",
+    "out_dir": "data/ml_runs/candidate_pool_seed_discovery_v10/ga_parametric_search_v1",
+    "contact_run_root": "data/ml_runs/mlp_contact_valid_parametric_seed_discovery_v7_full",
+    "contact_split": "shape_family",
+    "positive_run_root": "data/ml_runs/mlp_is_positive_shape_parametric_seed_discovery_v7_full",
+    "positive_split": "shape_family",
+    "reg_run_root": "data/ml_runs/mlp_gap34_gain_surrogate_v7_full",
+    "reg_split": "shape_family",
+    "calibration_json": "stage3_training/seed_discovery_scoring_calibration_v1.json",
+    "whitelist_json": "stage3_training/ga_shape_whitelist_v1.json",
+    "top_k_seeds": 3,
+    "only_point_id": "rf09_h00_center",
+    "population_size": 20,
+    "generations": 12,
+    "elite_k": 4,
+    "mutation_rate": 0.2,
+    "mutation_scale": 0.08,
+    "local_span_scale": 1.0,
+    "surrogate_delta_cap": 3.0,
+    "seed": 20260324,
+    "bounds": {
+      "a1": [0.46, 0.54],
+      "a2": [-0.18, -0.06],
+      "b1": [0.0, 0.0],
+      "b2": [0.0, 0.08],
+      "a3": [0.0, 0.0],
+      "b3": [0.0, 0.0],
+      "a4": [0.0, 0.03],
+      "b4": [0.0, 0.0],
+      "a5": [0.0, 0.0],
+      "b5": [0.0, 0.03],
+      "r0": [0.01, 0.014]
+    },
+    "local_half_widths": {
+      "a1": 0.003,
+      "a2": 0.004,
+      "b1": 0.0,
+      "b2": 0.0035,
+      "a3": 0.0,
+      "b3": 0.0,
+      "a4": 0.002,
+      "b4": 0.0,
+      "a5": 0.0,
+      "b5": 0.002,
+      "r0": 0.00025
+    },
+    "fitness_objective": "cascade_score_with_distance_penalty"
+  },
+  "validation_manifest": {
+    "ga_csv": "data/ml_runs/candidate_pool_seed_discovery_v10/ga_parametric_search_v1/ga_candidate_manifest_v1.csv",
+    "out_dir": "data/ml_runs/candidate_pool_seed_discovery_v10/ga_parametric_search_v1/validation_manifest_v1",
+    "total_k": 6,
+    "per_seed_k": 2
+  }
+}

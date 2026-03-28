@@ -31,7 +31,8 @@ cfg.shapeSummaryCsv = fullfile(outDir, 'stage2_harmonics_shape_summary.csv');
 cfg.pointSummaryCsv = fullfile(outDir, 'stage2_harmonics_point_summary.csv');
 
 cfg.fourierId = 'stage2_harmonics_v1';
-cfg.materialCase = 'soft_matrix_hard_inclusion';
+cfg.materialProfile = 'baseline_soft_hard';
+cfg = apply_material_profile_to_config(cfg);
 cfg.studyPName = {'k'};
 cfg.studyPListArr = {'range(0,3/(N-1),3)'};
 cfg.studyPUnit = {''};
@@ -142,6 +143,7 @@ cfg.doeFieldOrder = {'main_id', 'point_id', 'a1', 'a2', 'b2', 'r0', 'a3', 'b3', 
 
 signatureParts = [{ ...
     cfg.fourierId, ...
+    ['material_profile=' cfg.materialProfile], ...
     sprintf('cand=%d', cfg.harmonicCandidateCount), ...
     sprintf('minratio=%.12g', cfg.minPositiveGainRatio), ...
     sprintf('minmean=%.12g', cfg.minMeanGapGainHz), ...
@@ -191,3 +193,5 @@ function part = vector_signature(name, values)
 valueText = strjoin(arrayfun(@(v) sprintf('%.12g', v), values, 'UniformOutput', false), ',');
 part = sprintf('%s=%s', name, valueText);
 end
+
+

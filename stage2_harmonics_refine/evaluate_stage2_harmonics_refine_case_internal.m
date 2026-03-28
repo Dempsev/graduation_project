@@ -25,7 +25,7 @@ if ~result.geometry_valid || ~result.contact_valid
 end
 
 try
-    model = set_material_03(model);
+    model = set_material_03(model, cfg);
     model = set_physics_04(model);
     model = set_mesh_05(model);
     model = set_study_06(model);
@@ -127,3 +127,4 @@ if result.solve_success && isfinite(result.ref_gap34_rel)
     result.gap34_gain_rel = result.gap34_rel - result.ref_gap34_rel;
 end
 end
+

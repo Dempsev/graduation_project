@@ -1,4 +1,4 @@
-function cfg = get_stage2_refine_config()
+﻿function cfg = get_stage2_refine_config()
 %GET_STAGE2_REFINE_CONFIG Focused stage-2b config for local Fourier refinement.
 % This refinement stage keeps only the most robust shapes from stage-2 and
 % zooms into the empirically favorable region: a2 < 0, b2 >= 0.
@@ -31,7 +31,8 @@ cfg.shapeSummaryCsv = fullfile(outDir, 'stage2_refine_shape_summary.csv');
 cfg.pointSummaryCsv = fullfile(outDir, 'stage2_refine_point_summary.csv');
 
 cfg.fourierId = 'stage2_refine_v1';
-cfg.materialCase = 'soft_matrix_hard_inclusion';
+cfg.materialProfile = 'baseline_soft_hard';
+cfg = apply_material_profile_to_config(cfg);
 cfg.studyPName = {'k'};
 cfg.studyPListArr = {'range(0,3/(N-1),3)'};
 cfg.studyPUnit = {''};
@@ -124,6 +125,7 @@ cfg.doeFieldOrder = {'point_id', 'a1', 'a2', 'b2', 'r0'};
 
 cfg.configSignature = strjoin({ ...
     cfg.fourierId, ...
+    ['material_profile=' cfg.materialProfile], ...
     sprintf('a1=%.12g', cfg.baseParamNumeric.a1), ...
     sprintf('a2=%.12g', cfg.baseParamNumeric.a2), ...
     sprintf('b2=%.12g', cfg.baseParamNumeric.b2), ...
@@ -152,3 +154,5 @@ if ~exist(pathStr, 'dir')
     mkdir(pathStr);
 end
 end
+
+

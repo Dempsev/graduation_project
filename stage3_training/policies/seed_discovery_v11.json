@@ -1,0 +1,17 @@
+﻿{
+  "dataset": "data/ml_dataset/v11/candidate_pool_v11_seed_only_refined/candidate_pool_v11.csv",
+  "contact_run_root": "data/ml_runs/mlp_contact_valid_parametric_seed_discovery_v7_full",
+  "contact_split": "shape_family",
+  "positive_run_root": "data/ml_runs/mlp_is_positive_shape_parametric_seed_discovery_v7_full",
+  "positive_split": "shape_family",
+  "reg_run_root": "data/ml_runs/mlp_gap34_gain_surrogate_v7_full",
+  "reg_split": "shape_family",
+  "objective_name": "gap34_gain_Hz",
+  "calibration_json": "stage3_training/seed_discovery_scoring_calibration_v1.json",
+  "contact_threshold": 0.01,
+  "positive_threshold": 0.5,
+  "contact_weight": 0.7,
+  "positive_weight": 0.3,
+  "reg_min": 0.0,
+  "top_k": 12
+}

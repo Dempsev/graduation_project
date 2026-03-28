@@ -1,4 +1,4 @@
-import com.comsol.model.*
+﻿import com.comsol.model.*
 import com.comsol.model.util.*
 
 thisDir = fileparts(mfilename('fullpath'));
@@ -33,6 +33,7 @@ processedIds = string(get_processed_ids(results));
 
 fprintf('Stage-2 Fourier robustness screening\n');
 fprintf('Fourier mother: %s\n', cfg.fourierId);
+fprintf('Material profile: %s\n', cfg.materialProfile);
 fprintf('Material case: %s\n', cfg.materialCase);
 fprintf('Stage-1 summary: %s\n', cfg.stage1SummaryCsv);
 fprintf('Output dir: %s\n', cfg.outDir);
@@ -273,6 +274,7 @@ else
     s = sprintf('%.6g', v);
 end
 end
+
 
 
 

@@ -2,6 +2,7 @@
 
 import argparse
 import math
+import sys
 from pathlib import Path
 from typing import Dict, List
 
@@ -11,6 +12,10 @@ import pandas as pd
 import torch
 from torch import nn
 
+if str(Path(__file__).resolve().parents[1]) not in sys.path:
+    sys.path.insert(0, str(Path(__file__).resolve().parents[1]))
+
+from objective_registry import DEFAULT_OBJECTIVE_NAME, objective_choices
 from ml_common import (
     DEFAULT_OUT_ROOT,
     ROOT,
@@ -47,14 +52,14 @@ FEATURE_PRESETS = {
     'surrogate_directional_geo_augmented': [*SURROGATE_DIRECTIONAL_FEATURES, *SURROGATE_GEO_EXTRA_FEATURES],
     'surrogate_seed_discovery': SURROGATE_SEED_DISCOVERY_FEATURES,
 }
-TARGET_CHOICES = ['gap34_gain_Hz', 'gap34_Hz', 'gap34_rel', 'gap34_gain_rel']
+TARGET_CHOICES = objective_choices()
 
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Train cleaned surrogate MLP regressor for v7 datasets.')
     parser.add_argument('--dataset', type=Path, default=DEFAULT_DATASET)
     parser.add_argument('--feature-preset', default='surrogate_directional', choices=sorted(FEATURE_PRESETS.keys()))
-    parser.add_argument('--target', default='gap34_gain_Hz', choices=TARGET_CHOICES)
+    parser.add_argument('--target', default=DEFAULT_OBJECTIVE_NAME, choices=TARGET_CHOICES)
     parser.add_argument('--group-keys', default='shape_id,shape_family')
     parser.add_argument('--run-name', default='mlp_gap34_gain_surrogate_v7_full')
     parser.add_argument('--epochs', type=int, default=600)

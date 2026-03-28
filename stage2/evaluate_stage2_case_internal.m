@@ -1,4 +1,4 @@
-function result = evaluate_stage2_case_internal(cfg, sampleMeta, pointSpec, refPoint)
+﻿function result = evaluate_stage2_case_internal(cfg, sampleMeta, pointSpec, refPoint)
 %EVALUATE_STAGE2_CASE_INTERNAL Shared worker for stage-2 baseline and shape cases.
 
 if nargin < 4
@@ -25,7 +25,7 @@ if ~result.geometry_valid || ~result.contact_valid
 end
 
 try
-    model = set_material_03(model);
+    model = set_material_03(model, cfg);
     model = set_physics_04(model);
     model = set_mesh_05(model);
     model = set_study_06(model);
@@ -126,3 +126,4 @@ if result.solve_success && isfinite(result.ref_gap_rel)
     result.gap_gain_rel = result.gap_target_rel - result.ref_gap_rel;
 end
 end
+

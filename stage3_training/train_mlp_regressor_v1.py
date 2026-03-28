@@ -4,6 +4,7 @@ import argparse
 import csv
 import json
 import math
+import sys
 from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, List, Sequence, Tuple
@@ -16,6 +17,11 @@ from torch import nn
 from torch.utils.data import DataLoader, TensorDataset
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from objective_registry import DEFAULT_OBJECTIVE_NAME, get_objective, objective_choices
+
 DEFAULT_DATASET = ROOT / 'data' / 'ml_dataset' / 'v1' / 'mlp_gap34_regression_v1.csv'
 DEFAULT_OUT_ROOT = ROOT / 'data' / 'ml_runs'
 
@@ -64,7 +70,7 @@ def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description='Train first-pass MLP regressor for metamaterial dataset.')
     parser.add_argument('--dataset', type=Path, default=DEFAULT_DATASET)
     parser.add_argument('--preset', choices=sorted(PRESETS.keys()), default='post_stage1')
-    parser.add_argument('--target', default='gap34_gain_Hz', choices=['gap34_gain_Hz', 'gap34_Hz', 'gap34_rel', 'gap34_gain_rel'])
+    parser.add_argument('--target', default=DEFAULT_OBJECTIVE_NAME, choices=objective_choices())
     parser.add_argument('--group-key', default='shape_id', choices=['shape_id', 'shape_family', 'source_stage', 'none'])
     parser.add_argument('--run-name', default='mlp_gap34_gain_post_stage1_v1')
     parser.add_argument('--epochs', type=int, default=600)
@@ -101,10 +107,8 @@ def select_rows(df: pd.DataFrame, args: argparse.Namespace) -> pd.DataFrame:
         df = df[df['source_stage'].isin(stages)].copy()
     df = df[np.isfinite(df[args.target])].copy()
     if args.positive_only:
-        if args.target == 'gap34_gain_Hz':
-            df = df[df['gap34_gain_Hz'] > 0].copy()
-        elif args.target == 'gap34_Hz':
-            df = df[df['gap34_Hz'] > 0].copy()
+        objective = get_objective(args.target)
+        df = df[df[objective.metric_column] > objective.positive_threshold].copy()
     return df
 
 

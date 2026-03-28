@@ -1,0 +1,103 @@
+﻿{
+  "suite_name": "minimal_family_point_objective_compare",
+  "validation_selection_rule": {
+    "rule": "top_k",
+    "k": 4,
+    "max_per_shape": 2,
+    "max_per_family": 2
+  },
+  "experiments": [
+    {
+      "experiment_name": "stage4_v10_family_slice_gap_gain",
+      "source_csv": "data/comsol_batch/stage4_validation_ab_v10/stage4_validation_results.csv",
+      "shape_family_list": ["ep161", "ep211", "ep249"],
+      "shape_id_list": [],
+      "point_id_list": ["rf09_h00_center", "rf09_h09_b5_002_a4_0015"],
+      "objective_name": "gap34_gain_Hz",
+      "scoring_setting": {
+        "mode": "observed_objective",
+        "positive_threshold": 0.0
+      },
+      "validation_selection_rule": {
+        "rule": "top_k",
+        "k": 4
+      }
+    },
+    {
+      "experiment_name": "stage4_v10_family_slice_gap_width",
+      "source_csv": "data/comsol_batch/stage4_validation_ab_v10/stage4_validation_results.csv",
+      "shape_family_list": ["ep161", "ep211", "ep249"],
+      "shape_id_list": [],
+      "point_id_list": ["rf09_h00_center", "rf09_h09_b5_002_a4_0015"],
+      "objective_name": "gap34_Hz",
+      "scoring_setting": {
+        "mode": "observed_objective",
+        "positive_threshold": 0.0
+      },
+      "validation_selection_rule": {
+        "rule": "top_k",
+        "k": 4
+      }
+    },
+    {
+      "experiment_name": "candidate_pool_v10_center_surrogate",
+      "source_csv": "data/ml_dataset/v10/candidate_pool_v10_seed_only_refined/candidate_pool_v10.csv",
+      "shape_family_list": ["ep161", "ep211", "ep249"],
+      "shape_id_list": [],
+      "point_id_list": ["rf09_h00_center"],
+      "objective_name": "gap34_gain_Hz",
+      "scoring_setting": {
+        "mode": "surrogate",
+        "contact_run_root": "data/ml_runs/mlp_contact_valid_parametric_seed_discovery_v7_full",
+        "positive_run_root": "data/ml_runs/mlp_is_positive_shape_parametric_seed_discovery_v7_full",
+        "reg_run_root": "data/ml_runs/mlp_gap34_gain_surrogate_v7_full",
+        "contact_split": "shape_family",
+        "positive_split": "shape_family",
+        "reg_split": "shape_family",
+        "contact_threshold": 0.5,
+        "positive_threshold": 0.5,
+        "contact_weight": 0.7,
+        "positive_weight": 0.3,
+        "reg_min": 0.0
+      },
+      "validation_selection_rule": {
+        "rule": "primary_probe",
+        "primary_k": 3,
+        "probe_k": 1,
+        "diversity_k": 0,
+        "max_per_shape": 1,
+        "max_per_family": 2
+      }
+    },
+    {
+      "experiment_name": "candidate_pool_v10_anchor_surrogate",
+      "source_csv": "data/ml_dataset/v10/candidate_pool_v10_seed_only_refined/candidate_pool_v10.csv",
+      "shape_family_list": ["ep161", "ep211", "ep249"],
+      "shape_id_list": [],
+      "point_id_list": ["rf09_h09_b5_002_a4_0015"],
+      "objective_name": "gap34_gain_Hz",
+      "scoring_setting": {
+        "mode": "surrogate",
+        "contact_run_root": "data/ml_runs/mlp_contact_valid_parametric_seed_discovery_v7_full",
+        "positive_run_root": "data/ml_runs/mlp_is_positive_shape_parametric_seed_discovery_v7_full",
+        "reg_run_root": "data/ml_runs/mlp_gap34_gain_surrogate_v7_full",
+        "contact_split": "shape_family",
+        "positive_split": "shape_family",
+        "reg_split": "shape_family",
+        "contact_threshold": 0.5,
+        "positive_threshold": 0.5,
+        "contact_weight": 0.7,
+        "positive_weight": 0.3,
+        "reg_min": 0.0
+      },
+      "validation_selection_rule": {
+        "rule": "primary_probe",
+        "primary_k": 3,
+        "probe_k": 1,
+        "diversity_k": 0,
+        "max_per_shape": 1,
+        "max_per_family": 2
+      }
+    }
+  ]
+}

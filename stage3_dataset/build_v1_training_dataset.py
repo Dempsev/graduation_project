@@ -4,10 +4,15 @@ import csv
 import json
 import math
 import re
+import sys
 from pathlib import Path
 from typing import Dict, List, Tuple
 
 ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from objective_registry import DEFAULT_OBJECTIVE_NAME, objective_choices
 OUT_DIR = ROOT / 'data' / 'ml_dataset' / 'v1'
 TASKS_DIR = OUT_DIR / 'tasks'
 FIXED_GAP_BAND = 3
@@ -596,6 +601,8 @@ def build_dataset_info(rows: List[Dict[str, object]], regression_rows: List[Dict
     return {
         'label_definition': 'fixed_gap_band_3_4',
         'fixed_gap_band': FIXED_GAP_BAND,
+        'default_objective': DEFAULT_OBJECTIVE_NAME,
+        'supported_objectives': objective_choices(include_compat=False),
         'master_rows': len(rows),
         'regression_rows': len(regression_rows),
         'source_stages': [cfg['name'] for cfg in STAGES],
@@ -621,7 +628,7 @@ def build_dataset_info(rows: List[Dict[str, object]], regression_rows: List[Dict
             'surrogate_regression_core_v1': {
                 'path': str(SURROGATE_CORE_TASK_CSV),
                 'rows': len(task_rows['surrogate_core']),
-                'target': 'gap34_gain_Hz',
+                'target': DEFAULT_OBJECTIVE_NAME,
                 'source_stages': SURROGATE_CORE_STAGES,
                 'feature_presets': ['surrogate_core', 'surrogate_geo_augmented'],
                 'row_filter': 'is_training_ready=1',
@@ -629,7 +636,7 @@ def build_dataset_info(rows: List[Dict[str, object]], regression_rows: List[Dict
             'surrogate_regression_specialcase_v1': {
                 'path': str(SURROGATE_SPECIALCASE_TASK_CSV),
                 'rows': len(task_rows['surrogate_specialcase']),
-                'target': 'gap34_gain_Hz',
+                'target': DEFAULT_OBJECTIVE_NAME,
                 'source_stages': ['stage2_harmonics_refine'],
                 'feature_presets': ['surrogate_core', 'surrogate_geo_augmented'],
                 'row_filter': 'shape_role=special_case && is_training_ready=1',

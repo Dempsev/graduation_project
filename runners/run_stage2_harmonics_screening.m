@@ -34,6 +34,7 @@ processedIds = string(get_processed_ids(results));
 
 fprintf('Stage-2 harmonic screening\n');
 fprintf('Fourier mother: %s\n', cfg.fourierId);
+fprintf('Material profile: %s\n', cfg.materialProfile);
 fprintf('Material case: %s\n', cfg.materialCase);
 fprintf('Refine summary: %s\n', cfg.refineShapeSummaryCsv);
 fprintf('Output dir: %s\n', cfg.outDir);
@@ -285,3 +286,4 @@ else
     s = sprintf('%.6g', v);
 end
 end
+

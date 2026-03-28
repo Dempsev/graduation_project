@@ -1,9 +1,15 @@
-from __future__ import annotations
+﻿from __future__ import annotations
 
 import json
+import sys
 from pathlib import Path
 from typing import Dict, List
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
+from objective_registry import DEFAULT_OBJECTIVE_NAME, objective_choices
 import build_v5_training_dataset as prev
 import build_v1_training_dataset as base
 
@@ -84,6 +90,8 @@ def build_dataset_info(rows: List[Dict[str, object]], regression_rows: List[Dict
     return {
         'label_definition': 'fixed_gap_band_3_4',
         'fixed_gap_band': FIXED_GAP_BAND,
+        'default_objective': DEFAULT_OBJECTIVE_NAME,
+        'supported_objectives': objective_choices(include_compat=False),
         'master_rows': len(rows),
         'regression_rows': len(regression_rows),
         'source_stages': [cfg['name'] for cfg in STAGES],
@@ -95,8 +103,8 @@ def build_dataset_info(rows: List[Dict[str, object]], regression_rows: List[Dict
             'shape_screening_positive_cls_v6': {'path': str(POSITIVE_TASK_CSV), 'rows': len(task_rows['positive_cls']), 'target': 'is_positive_shape', 'source_stages': ['stage1'], 'feature_preset': 'shape_only', 'row_filter': 'contact_valid=1 && solve_success=1'},
             'parametric_contact_cls_v6': {'path': str(PARAM_CONTACT_TASK_CSV), 'rows': len(task_rows['param_contact_cls']), 'target': 'contact_valid', 'source_stages': PARAM_CLASSIFICATION_STAGES, 'feature_presets': ['parametric_core', 'parametric_directional']},
             'parametric_positive_cls_v6': {'path': str(PARAM_POSITIVE_TASK_CSV), 'rows': len(task_rows['param_positive_cls']), 'target': 'is_positive_shape', 'source_stages': PARAM_CLASSIFICATION_STAGES, 'feature_presets': ['parametric_core', 'parametric_directional'], 'row_filter': 'contact_valid=1 && solve_success=1'},
-            'surrogate_regression_core_v6': {'path': str(SURROGATE_CORE_TASK_CSV), 'rows': len(task_rows['surrogate_core']), 'target': 'gap34_gain_Hz', 'source_stages': SURROGATE_CORE_STAGES, 'feature_presets': ['surrogate_core', 'surrogate_geo_augmented', 'surrogate_directional', 'surrogate_directional_geo_augmented'], 'row_filter': 'is_training_ready=1 && not special_case'},
-            'surrogate_regression_specialcase_v6': {'path': str(SURROGATE_SPECIALCASE_TASK_CSV), 'rows': len(task_rows['surrogate_specialcase']), 'target': 'gap34_gain_Hz', 'source_stages': SURROGATE_CORE_STAGES, 'feature_presets': ['surrogate_core', 'surrogate_geo_augmented', 'surrogate_directional', 'surrogate_directional_geo_augmented'], 'row_filter': 'shape_family in special_case_set && is_training_ready=1'},
+            'surrogate_regression_core_v6': {'path': str(SURROGATE_CORE_TASK_CSV), 'rows': len(task_rows['surrogate_core']), 'target': DEFAULT_OBJECTIVE_NAME, 'source_stages': SURROGATE_CORE_STAGES, 'feature_presets': ['surrogate_core', 'surrogate_geo_augmented', 'surrogate_directional', 'surrogate_directional_geo_augmented'], 'row_filter': 'is_training_ready=1 && not special_case'},
+            'surrogate_regression_specialcase_v6': {'path': str(SURROGATE_SPECIALCASE_TASK_CSV), 'rows': len(task_rows['surrogate_specialcase']), 'target': DEFAULT_OBJECTIVE_NAME, 'source_stages': SURROGATE_CORE_STAGES, 'feature_presets': ['surrogate_core', 'surrogate_geo_augmented', 'surrogate_directional', 'surrogate_directional_geo_augmented'], 'row_filter': 'shape_family in special_case_set && is_training_ready=1'},
         },
         'shape_feature_fields': SHAPE_FEATURE_FIELDS,
         'context_numeric_fields': prev.CONTEXT_NUMERIC_FIELDS,

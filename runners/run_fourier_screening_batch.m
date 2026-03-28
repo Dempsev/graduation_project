@@ -1,10 +1,12 @@
-import com.comsol.model.*
+﻿import com.comsol.model.*
 import com.comsol.model.util.*
 
 thisDir = fileparts(mfilename('fullpath'));
 rootDir = fileparts(thisDir);
 addpath(genpath(fullfile(rootDir, 'model_core')));
 
+materialProfile = resolve_material_profile_name('baseline_soft_hard');
+materialProfileInfo = get_material_profile(materialProfile);
 shapeDir = fullfile(rootDir, 'data', 'shape_contours');
 outDir = fullfile(rootDir, 'data', 'comsol_batch', 'fourier_screening');
 modelsDir = fullfile(outDir, 'models');
@@ -48,6 +50,7 @@ end
 
 ModelUtil.clear;
 ModelUtil.showProgress(true);
+fprintf("Material profile: %s (%s)\n", materialProfileInfo.name, materialProfileInfo.material_case);
 exportedTbl1Paths = {};
 
 for i = startIndex:endIndex
@@ -85,7 +88,7 @@ for i = startIndex:endIndex
             continue;
         end
 
-        model = set_material_03(model);
+        model = set_material_03(model, materialProfileInfo);
         model = set_physics_04(model);
         model = set_mesh_05(model);
         model = set_study_06(model);
@@ -312,3 +315,7 @@ if statusPlot ~= 0
     warning("postprocess plotting failed with exit code %d", statusPlot);
 end
 end
+
+
+
+

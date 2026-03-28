@@ -1,4 +1,4 @@
-function cfg = get_stage2_config()
+﻿function cfg = get_stage2_config()
 %GET_STAGE2_CONFIG Centralized config for stage-2 Fourier robustness screening.
 % Stage-2 keeps the trusted mother fixed, reuses stage-1 outputs to choose
 % representative snake shapes, and evaluates local Fourier robustness via a
@@ -31,7 +31,8 @@ cfg.shapeSummaryCsv = fullfile(outDir, 'stage2_shape_summary.csv');
 cfg.pointSummaryCsv = fullfile(outDir, 'stage2_point_summary.csv');
 
 cfg.fourierId = 'stage2_local_fourier_v1';
-cfg.materialCase = 'soft_matrix_hard_inclusion';
+cfg.materialProfile = 'baseline_soft_hard';
+cfg = apply_material_profile_to_config(cfg);
 cfg.studyPName = {'k'};
 cfg.studyPListArr = {'range(0,3/(N-1),3)'};
 cfg.studyPUnit = {''};
@@ -123,6 +124,7 @@ cfg.doeFieldOrder = {'point_id', 'a1', 'a2', 'b2', 'r0'};
 
 cfg.configSignature = strjoin({ ...
     cfg.fourierId, ...
+    ['material_profile=' cfg.materialProfile], ...
     sprintf('a1=%.12g', cfg.baseParamNumeric.a1), ...
     sprintf('a2=%.12g', cfg.baseParamNumeric.a2), ...
     sprintf('b2=%.12g', cfg.baseParamNumeric.b2), ...
@@ -146,3 +148,5 @@ if ~exist(pathStr, 'dir')
     mkdir(pathStr);
 end
 end
+
+
