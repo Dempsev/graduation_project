@@ -1,0 +1,129 @@
+{
+  "version": "2026-03-26",
+  "notes": [
+    "These presets are recommendations distilled from repo-local autoresearch sessions.",
+    "They are intended as practical starting points, not immutable final settings.",
+    "The scoring preset remains shortlist-oriented and still requires Stage-4 COMSOL validation."
+  ],
+  "presets": {
+    "classifier_contact_valid": {
+      "status": "recommended",
+      "source_session": "eval_contact_valid_e80",
+      "source_best_trial": "stage3_autoresearch/eval_contact_valid_e80/trials/classifier_trial_003",
+      "objective_group": "shape_family",
+      "task": "contact_valid",
+      "feature_preset": "parametric_core",
+      "hidden_dims": "64,64",
+      "dropout": 0.15,
+      "lr": 0.002,
+      "weight_decay": 1e-06,
+      "batch_size": 32,
+      "threshold": 0.55,
+      "epochs": 80,
+      "observed_metrics": {
+        "val_f1": 0.9761904761904763,
+        "val_bal_acc": 0.9767441860465116,
+        "test_f1": 0.9083333333333333,
+        "test_bal_acc": 0.8284620036283008,
+        "test_accuracy": 0.8641975308641975
+      }
+    },
+    "classifier_is_positive_shape": {
+      "status": "recommended",
+      "source_session": "eval_positive_cls_e100_t12_v2",
+      "source_best_trial": "stage3_autoresearch/eval_positive_cls_e100_t12_v2/trials/classifier_trial_011",
+      "objective_group": "shape_family",
+      "task": "is_positive_shape",
+      "feature_preset": "parametric_core",
+      "hidden_dims": "256,128",
+      "dropout": 0.1,
+      "lr": 0.002,
+      "weight_decay": 1e-05,
+      "batch_size": 32,
+      "threshold": 0.5,
+      "epochs": 100,
+      "objective_note": "Chosen with a balanced validation objective that upweights balanced_accuracy to reduce brittle high-F1 / low-recall picks.",
+      "observed_metrics": {
+        "val_f1": 0.8732394366197184,
+        "val_bal_acc": 0.8129084967320261,
+        "test_f1": 0.7183098591549296,
+        "test_bal_acc": 0.7160050675675675,
+        "test_accuracy": 0.7101449275362319
+      }
+    },
+    "regressor_gap34_gain_Hz": {
+      "status": "recommended",
+      "source_session": "eval_regressor_gain_e100",
+      "source_best_trial": "stage3_autoresearch/eval_regressor_gain_e100/trials/regressor_trial_002",
+      "objective_group": "shape_family",
+      "target": "gap34_gain_Hz",
+      "feature_preset": "surrogate_core",
+      "hidden_dims": "64,64",
+      "dropout": 0.1,
+      "lr": 0.001,
+      "weight_decay": 1e-06,
+      "batch_size": 64,
+      "epochs": 100,
+      "observed_metrics": {
+        "val_rmse": 99.24568119023232,
+        "val_mae": 75.92479409147545,
+        "val_r2": 0.21030641567906594,
+        "test_rmse": 97.4140218398045,
+        "test_mae": 69.98236043416293,
+        "test_r2": 0.11579645621274037
+      }
+    },
+    "seed_discovery_scoring_v10": {
+      "status": "recommended_with_caution",
+      "source_session": "eval_scoring_v10_t16_v2",
+      "source_best_trial": "stage3_autoresearch/eval_scoring_v10_t16_v2/trials/scoring_trial_009",
+      "dataset": "data/ml_dataset/v10/candidate_pool_v10_seed_only_refined/candidate_pool_v10.csv",
+      "contact_run_root": "data/ml_runs/mlp_contact_valid_parametric_seed_discovery_v7_full",
+      "positive_run_root": "data/ml_runs/mlp_is_positive_shape_parametric_seed_discovery_v7_full",
+      "reg_run_root": "data/ml_runs/mlp_gap34_gain_surrogate_v7_full",
+      "contact_threshold": 0.55,
+      "positive_threshold": 0.4,
+      "contact_weight": 0.65,
+      "positive_weight": 0.35,
+      "reg_min": 20.0,
+      "top_k": 16,
+      "objective_note": "Useful for shortlist shaping, but current candidate pool still shows zero cascade_gate rows and must be judged by downstream COMSOL validation.",
+      "observed_metrics": {
+        "objective": 2.924239374799045,
+        "rows_total": 22,
+        "rows_cascade_gate": 0,
+        "cascade_gate_rate": 0.0,
+        "top_k_gate_count": 0,
+        "top_k_strong_positive_count": 4,
+        "top_k_weak_positive_count": 4,
+        "top_k_mean_stage1_gain": 2.4492005555812097
+      }
+    },
+    "seed_discovery_scoring_v11": {
+      "status": "recommended_with_caution",
+      "source_session": "eval_scoring_v11_t8",
+      "source_best_trial": "stage3_autoresearch/eval_scoring_v11_t8/trials/scoring_trial_006",
+      "dataset": "data/ml_dataset/v11/candidate_pool_v11_seed_only_refined/candidate_pool_v11.csv",
+      "contact_run_root": "data/ml_runs/mlp_contact_valid_parametric_seed_discovery_v7_full",
+      "positive_run_root": "data/ml_runs/mlp_is_positive_shape_parametric_seed_discovery_v7_full",
+      "reg_run_root": "data/ml_runs/mlp_gap34_gain_surrogate_v7_full",
+      "contact_threshold": 0.5,
+      "positive_threshold": 0.5,
+      "contact_weight": 0.65,
+      "positive_weight": 0.35,
+      "reg_min": 0.0,
+      "top_k": 10,
+      "objective_note": "This is the current best repo-local shortlist-shaping configuration found on the v11 candidate pool. The pool still has zero cascade_gate rows, so COMSOL validation remains the real decision layer.",
+      "observed_metrics": {
+        "objective": 1.8671711270211295,
+        "rows_total": 10,
+        "rows_cascade_gate": 0,
+        "cascade_gate_rate": 0.0,
+        "top_k_gate_count": 0,
+        "top_k_strong_positive_count": 2,
+        "top_k_weak_positive_count": 2,
+        "top_k_mean_stage1_gain": 2.005521026730656
+      }
+    }
+  }
+}
