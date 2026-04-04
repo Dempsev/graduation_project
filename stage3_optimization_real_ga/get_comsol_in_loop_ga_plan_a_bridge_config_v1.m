@@ -3,6 +3,7 @@ function cfg = get_comsol_in_loop_ga_plan_a_bridge_config_v1()
 % Build the real-GA config by using plan-A real validation as the seed gate.
 
 cfg = get_comsol_in_loop_ga_config_v1();
+gate = get_plan_a_seed_gate_defaults_v1();
 
 cfg.gaId = 'comsol_in_loop_ga_plan_a_bridge_v1';
 cfg.planAWorktreeDir = fullfile(cfg.rootDir, '.worktrees', 'optimization-plan-a');
@@ -10,10 +11,10 @@ cfg.planAValidationShapeSummaryCsv = fullfile( ...
     cfg.planAWorktreeDir, ...
     'data', 'comsol_batch', 'stage4_validation_ab_ga_plan_a_expanded_v1', ...
     'stage4_validation_shape_summary.csv');
-cfg.planATopKSeeds = 3;
-cfg.planAMinMeanGainHz = 1.0;
-cfg.planAMinPositiveRate = 1.0;
-cfg.planAMinSolveSuccessCount = 2;
+cfg.planATopKSeeds = gate.topKSeeds;
+cfg.planAMinMeanGainHz = gate.minMeanGainHz;
+cfg.planAMinPositiveRate = gate.minPositiveRate;
+cfg.planAMinSolveSuccessCount = gate.minSolveSuccessCount;
 
 cfg.forceSeedShapeIds = cellstr(select_plan_a_validated_seed_ids_v1( ...
     cfg.planAValidationShapeSummaryCsv, ...

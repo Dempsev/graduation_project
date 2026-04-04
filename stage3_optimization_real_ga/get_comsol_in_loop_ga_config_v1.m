@@ -3,6 +3,7 @@ function cfg = get_comsol_in_loop_ga_config_v1()
 
 thisDir = fileparts(mfilename('fullpath'));
 rootDir = fileparts(thisDir);
+add_shared_optimization_paths(rootDir);
 baseCfg = get_stage2_harmonics_refine_config();
 
 cfg = baseCfg;
@@ -107,6 +108,13 @@ ensure_dir(cfg.logsDir);
 ensure_dir(cfg.plotDir);
 if cfg.saveModel
     ensure_dir(cfg.modelsDir);
+end
+end
+
+function add_shared_optimization_paths(rootDir)
+sharedOptDir = fullfile(rootDir, 'shared', 'optimization_matlab');
+if exist(sharedOptDir, 'dir')
+    addpath(sharedOptDir);
 end
 end
 

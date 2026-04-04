@@ -14,6 +14,8 @@ Phase 2 has started with the first safe extraction set:
   - shared Python runner helpers
 - `shared/optimization/`
   - shared optimization-side script and policy definitions
+- `shared/optimization_matlab/`
+  - shared MATLAB-side optimization summary fields and seed-gating rules
 
 Planned future extractions:
 
