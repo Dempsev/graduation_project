@@ -15,7 +15,7 @@ Phase 2 has started with the first safe extraction set:
 - `shared/optimization/`
   - shared optimization-side script and policy definitions
 - `shared/optimization_matlab/`
-  - shared MATLAB-side optimization summary fields and seed-gating rules
+  - shared MATLAB-side optimization summary fields, seed-gating rules, and real-GA config helpers
 
 Planned future extractions:
 
