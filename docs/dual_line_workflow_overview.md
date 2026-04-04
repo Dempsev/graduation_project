@@ -152,3 +152,14 @@ If you want the historical experiment path, read:
 - `stage3_training/`
 
 That directory remains the historical mainline, but it should no longer be treated as the only narrative for the thesis.
+
+## 7. Phase-1 Refactor Reading Order
+
+The repository now has a task-oriented top layer that should be preferred when reading the thesis-ready structure:
+
+1. `physics_pipeline/`
+2. `prediction/`
+3. `optimization/`
+4. `baselines/`
+
+The historical stage directories remain in place underneath that layer to preserve compatibility with existing scripts and experiment artifacts.

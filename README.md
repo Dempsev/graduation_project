@@ -37,6 +37,8 @@ In other words, this repository now reflects a **family-aware / step-aware targe
 
 ## Repository Layout
 
+### Historical Layout
+
 ```text
 coad/
   model_core/                Core COMSOL geometry / material / result helpers
@@ -67,6 +69,58 @@ coad/
 - `stage4_validation/`: centralizes `stage4_validation_ab_v*.m` configuration and CSV summary generation.
 - `runners/`: the main operational entry points used from MATLAB.
 - `data/`: all generated CSVs, manifests, COMSOL outputs, plots, and model checkpoints. This directory is intentionally git-ignored.
+
+## Phase-1 Refactor Layout
+
+The repository now also includes a task-oriented phase-1 refactor layer. This layer does not delete the historical stage-based structure. Instead, it adds a cleaner entry layer on top of it so the thesis can be read as:
+
+1. physical data production
+2. prediction
+3. optimization
+4. legacy baseline / historical comparison
+
+```text
+coad/
+  physics_pipeline/         Task-oriented reading guide for physical data generation
+  prediction/              Clean forward-prediction entry layer
+  optimization/            Optimization entry layer (surrogate-assisted + real GA)
+  baselines/               Legacy mainline / comparison workflows
+  shared/                  Planned home for future shared abstractions
+
+  stage1/                  Historical physical stage
+  stage2/                  Historical physical stage
+  stage2_refine/           Historical physical stage
+  stage2_harmonics/        Historical physical stage
+  stage2_harmonics_refine/ Historical physical stage
+  stage3_dataset/          Historical dataset builders
+  stage3_training/         Historical mixed candidate-discovery mainline
+  stage3_prediction/       Current implementation root of the prediction line
+  stage3_optimization/     Current implementation root of surrogate-assisted optimization
+  stage3_optimization_real_ga/
+                            Current implementation root of real COMSOL-in-loop GA
+  stage4_validation/       Historical validation stage
+```
+
+### Phase-1 Refactor Mapping
+
+This first refactor is intentionally conservative:
+
+- the **new task-oriented directories** provide the preferred reading order and new runner entry points
+- the **historical stage directories** still contain the real implementation
+- the **legacy mixed mainline** remains available as a baseline and repository history
+
+Current task-oriented mapping:
+
+- `physics_pipeline/`
+  - points readers to `stage1/`, `stage2/`, `stage2_refine/`, `stage2_harmonics/`, `stage2_harmonics_refine/`, `stage4_validation/`
+- `prediction/`
+  - points to `stage3_prediction/`
+- `optimization/`
+  - points to `stage3_optimization/` and `stage3_optimization_real_ga/`
+- `baselines/legacy_stage3_training/`
+  - points to `stage3_training/`
+- `shared/`
+  - reserved for a future second-stage refactor that will extract common objective, feature, split, I/O, and plotting utilities
 
 ## Phase Structure
 
