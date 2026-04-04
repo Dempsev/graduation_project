@@ -1,19 +1,13 @@
 from __future__ import annotations
 
-import subprocess
 import sys
 from pathlib import Path
-from typing import Iterable, List
 
-ROOT = Path(__file__).resolve().parents[1]
-STAGE3_TRAINING = ROOT / 'stage3_training'
+ROOT_DIR = Path(__file__).resolve().parents[1]
+if str(ROOT_DIR) not in sys.path:
+    sys.path.insert(0, str(ROOT_DIR))
 
+from shared.io.python_runner import ROOT, run_python_script
+from shared.optimization.legacy_seed_only import STAGE3_TRAINING
 
-def run_python_script(script_path: Path, args: Iterable[str] | None = None) -> None:
-    args = list(args or [])
-    if not script_path.exists():
-        raise FileNotFoundError(script_path)
-    cmd: List[str] = [sys.executable, str(script_path), *args]
-    result = subprocess.run(cmd, cwd=ROOT, check=False)
-    if result.returncode != 0:
-        raise RuntimeError(f'Command failed with exit code {result.returncode}: {cmd}')
+__all__ = ['ROOT', 'STAGE3_TRAINING', 'run_python_script']

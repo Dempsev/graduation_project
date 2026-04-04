@@ -1,0 +1,2 @@
+"""Shared optimization-side definitions."""
+

@@ -3,12 +3,13 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from common import ROOT, STAGE3_TRAINING, run_python_script
-
-SCRIPT = STAGE3_TRAINING / 'run_seed_discovery_scoring_v7.py'
-DEFAULT_DATASET = ROOT / 'data' / 'ml_dataset' / 'v10' / 'candidate_pool_v10_seed_only_refined' / 'candidate_pool_v10.csv'
-DEFAULT_POLICY = STAGE3_TRAINING / 'policies' / 'seed_discovery_v10.json'
-DEFAULT_RUN_NAME = 'candidate_pool_seed_discovery_v10'
+from common import run_python_script
+from shared.optimization.legacy_seed_only import (
+    DEFAULT_SCORING_DATASET as DEFAULT_DATASET,
+    DEFAULT_SCORING_POLICY as DEFAULT_POLICY,
+    DEFAULT_SCORING_RUN_NAME as DEFAULT_RUN_NAME,
+    SCORING_SCRIPT as SCRIPT,
+)
 
 
 def parse_args() -> argparse.Namespace:

@@ -3,10 +3,9 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from common import STAGE3_TRAINING, run_python_script
-
-SCRIPT = STAGE3_TRAINING / 'run_parametric_ga_seed_search_v1.py'
-DEFAULT_POLICY = STAGE3_TRAINING / 'policies' / 'ga_v1.json'
+from common import run_python_script
+from shared.optimization.legacy_seed_only import DEFAULT_LOCAL_GA_POLICY as DEFAULT_POLICY
+from shared.optimization.legacy_seed_only import LOCAL_GA_SCRIPT as SCRIPT
 
 
 def parse_args() -> argparse.Namespace:

@@ -3,10 +3,9 @@ from __future__ import annotations
 import argparse
 from pathlib import Path
 
-from common import STAGE3_TRAINING, run_python_script
-
-SCRIPT = STAGE3_TRAINING / 'build_validation_manifest_v10.py'
-DEFAULT_POLICY = STAGE3_TRAINING / 'policies' / 'manifest_v10.json'
+from common import run_python_script
+from shared.optimization.legacy_seed_only import DEFAULT_MANIFEST_POLICY as DEFAULT_POLICY
+from shared.optimization.legacy_seed_only import MANIFEST_SCRIPT as SCRIPT
 
 
 def parse_args() -> argparse.Namespace:
