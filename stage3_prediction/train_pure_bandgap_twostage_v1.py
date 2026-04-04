@@ -33,11 +33,14 @@ from stage3_training.ml_common import (
     split_frame,
     transform_features,
 )
-from stage3_prediction.train_pure_bandgap_regressor_v1 import FEATURE_PRESETS, ALLOWED_GROUP_KEYS, split_external_stage_holdout
+from shared.features.prediction import ALLOWED_GROUP_KEYS, PREDICTION_FEATURE_PRESETS
+from shared.objectives.prediction import PURE_WIDTH_TARGET_CHOICES
+from shared.splits.prediction import split_external_stage_holdout
 
 DEFAULT_DATASET = ROOT / 'data' / 'pure_prediction' / 'v1' / 'pure_bandgap_regression_v1.csv'
 DEFAULT_OUT_ROOT = ROOT / 'data' / 'pure_prediction_runs'
-WIDTH_TARGET_CHOICES = ['gap34_width_Hz', 'gap34_width_rel', 'max_gap_Hz', 'max_gap_rel']
+FEATURE_PRESETS = PREDICTION_FEATURE_PRESETS
+WIDTH_TARGET_CHOICES = PURE_WIDTH_TARGET_CHOICES
 
 
 def parse_args() -> argparse.Namespace:

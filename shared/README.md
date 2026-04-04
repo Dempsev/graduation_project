@@ -1,21 +1,23 @@
 # Shared
 
-This directory is reserved for the second-stage refactor.
+This directory is the home for shared abstractions extracted during the refactor.
 
-Phase 1 intentionally avoids large code movement. The goal is to stabilize the task-oriented architecture first.
+Phase 2 has started with the first safe extraction set:
 
-The planned future extractions are:
+- `shared/features/`
+  - prediction feature presets and reusable feature groups
+- `shared/objectives/`
+  - prediction target / label definitions
+- `shared/splits/`
+  - prediction split helpers such as external stage holdout
 
-- shared objective definitions
-- shared feature lists
-- shared train / val / test split helpers
+Planned future extractions:
+
 - shared CSV / JSON / manifest I/O
 - shared plotting and reporting utilities
+- shared optimization-side feature and target definitions
 
 Likely future homes:
 
-- `shared/objectives/`
-- `shared/features/`
-- `shared/splits/`
 - `shared/io/`
 - `shared/plotting/`

@@ -14,6 +14,8 @@ if str(STAGE3_DATASET_DIR) not in sys.path:
     sys.path.insert(0, str(STAGE3_DATASET_DIR))
 
 from stage3_dataset import build_v7_training_dataset as source
+from shared.features.prediction import PURE_STRUCTURAL_EXTENDED_FEATURES
+from shared.objectives.prediction import PURE_METADATA_FIELDS, PURE_TARGET_FIELDS
 
 OUT_DIR = ROOT / 'data' / 'pure_prediction' / 'v1'
 MASTER_CSV = OUT_DIR / 'master_pure_prediction_dataset_v1.csv'
@@ -21,25 +23,7 @@ TASK_CSV = OUT_DIR / 'pure_bandgap_regression_v1.csv'
 STAGE_SUMMARY_CSV = OUT_DIR / 'pure_prediction_stage_summary_v1.csv'
 DATASET_INFO_JSON = OUT_DIR / 'pure_prediction_dataset_info_v1.json'
 
-PURE_FEATURE_FIELDS = [
-    'a1', 'a2', 'b1', 'b2', 'a3', 'b3', 'a4', 'b4', 'a5', 'b5', 'r0',
-    *source.SHAPE_FEATURE_FIELDS,
-    'shape_compactness', 'shape_extent', 'shape_mean_radius', 'shape_std_radius',
-    'shape_min_radius', 'shape_max_radius', 'shape_radius_cv',
-    'shape_edge_mean', 'shape_edge_std', 'shape_edge_cv',
-]
-
-PURE_TARGET_FIELDS = [
-    'gap34_Hz', 'gap34_rel', 'gap34_width_Hz', 'gap34_width_rel', 'gap34_is_open',
-    'max_gap_Hz', 'max_gap_rel', 'max_gap_is_open',
-]
-
-PURE_METADATA_FIELDS = [
-    'sample_id', 'source_stage', 'source_role', 'candidate_id', 'main_id', 'point_id',
-    'shape_id', 'shape_family', 'shape_role',
-    'geometry_valid', 'contact_valid', 'solve_success',
-    'is_training_ready', 'label_definition', 'error_message',
-]
+PURE_FEATURE_FIELDS = list(PURE_STRUCTURAL_EXTENDED_FEATURES)
 
 MASTER_FIELDS = [
     *PURE_METADATA_FIELDS,

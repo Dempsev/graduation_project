@@ -35,26 +35,14 @@ from stage3_training.ml_common import (
     transform_features,
     transform_target,
 )
+from shared.features.prediction import ALLOWED_GROUP_KEYS, PREDICTION_FEATURE_PRESETS
+from shared.objectives.prediction import PURE_REGRESSION_TARGET_CHOICES
+from shared.splits.prediction import split_external_stage_holdout
 
 DEFAULT_DATASET = ROOT / 'data' / 'pure_prediction' / 'v1' / 'pure_bandgap_regression_v1.csv'
 DEFAULT_OUT_ROOT = ROOT / 'data' / 'pure_prediction_runs'
-ALLOWED_GROUP_KEYS = ['shape_id', 'shape_family', 'none']
-FEATURE_PRESETS = {
-    'pure_structural_core': [
-        'a1', 'a2', 'b1', 'b2', 'a3', 'b3', 'a4', 'b4', 'a5', 'b5', 'r0',
-        'shape_area', 'shape_perimeter', 'shape_bbox_width', 'shape_bbox_height',
-        'shape_bbox_aspect_ratio', 'shape_centroid_x', 'shape_centroid_y', 'shape_point_count',
-    ],
-    'pure_structural_extended': [
-        'a1', 'a2', 'b1', 'b2', 'a3', 'b3', 'a4', 'b4', 'a5', 'b5', 'r0',
-        'shape_area', 'shape_perimeter', 'shape_bbox_width', 'shape_bbox_height',
-        'shape_bbox_aspect_ratio', 'shape_centroid_x', 'shape_centroid_y', 'shape_point_count',
-        'shape_compactness', 'shape_extent', 'shape_mean_radius', 'shape_std_radius',
-        'shape_min_radius', 'shape_max_radius', 'shape_radius_cv',
-        'shape_edge_mean', 'shape_edge_std', 'shape_edge_cv',
-    ],
-}
-TARGET_CHOICES = ['gap34_Hz', 'gap34_rel', 'gap34_width_Hz', 'gap34_width_rel', 'max_gap_Hz', 'max_gap_rel']
+FEATURE_PRESETS = PREDICTION_FEATURE_PRESETS
+TARGET_CHOICES = PURE_REGRESSION_TARGET_CHOICES
 
 
 def parse_args() -> argparse.Namespace:
@@ -344,19 +332,6 @@ def train_for_group(df: pd.DataFrame, feature_cols: List[str], args: argparse.Na
     train_df, val_df, test_df = split_frame(df, group_key, args.seed, args.train_ratio, args.val_ratio)
     split_dir = run_root / group_key
     return train_one_split(train_df, val_df, test_df, feature_cols, args, split_dir, group_key, hidden_dims)
-
-
-def split_external_stage_holdout(df: pd.DataFrame, test_stage_prefixes: List[str]) -> tuple[pd.DataFrame, pd.DataFrame]:
-    mask = pd.Series(False, index=df.index)
-    source_stage = df['source_stage'].astype(str)
-    for prefix in test_stage_prefixes:
-        if prefix:
-            mask = mask | source_stage.str.startswith(prefix)
-    train_pool = df[~mask].copy()
-    test_df = df[mask].copy()
-    if train_pool.empty or test_df.empty:
-        raise RuntimeError('Stage-holdout split failed: train pool or test pool is empty.')
-    return train_pool, test_df
 
 
 def train_stage_holdout(df: pd.DataFrame, feature_cols: List[str], args: argparse.Namespace, run_root: Path, hidden_dims: List[int]) -> Dict[str, float]:
