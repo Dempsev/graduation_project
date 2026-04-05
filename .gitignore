@@ -21,6 +21,7 @@ __pycache__/
 # All simulation outputs, training tables, manifests, plots, and checkpoints
 # are written under data/ and should not be committed.
 data/
+web/
 
 # Legacy snake runtime logs
 snake/__pycache__/
