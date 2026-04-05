@@ -94,10 +94,10 @@ coad/
   stage2_harmonics_refine/ Historical physical stage
   stage3_dataset/          Historical dataset builders
   stage3_training/         Historical mixed candidate-discovery mainline
-  stage3_prediction/       Current implementation root of the prediction line
-  stage3_optimization/     Current implementation root of surrogate-assisted optimization
+  stage3_prediction/       Legacy compatibility layer for prediction paths
+  stage3_optimization/     Legacy compatibility layer for surrogate-assisted optimization
   stage3_optimization_real_ga/
-                            Current implementation root of real COMSOL-in-loop GA
+                            Legacy compatibility layer for real COMSOL-in-loop GA
   stage4_validation/       Historical validation stage
 ```
 
@@ -106,7 +106,7 @@ coad/
 This first refactor is intentionally conservative:
 
 - the **new task-oriented directories** provide the preferred reading order and new runner entry points
-- the **historical stage directories** still contain the real implementation
+- the **historical stage directories** still remain available for compatibility
 - the **legacy mixed mainline** remains available as a baseline and repository history
 
 Current task-oriented mapping:
@@ -114,9 +114,9 @@ Current task-oriented mapping:
 - `physics_pipeline/`
   - points readers to `stage1/`, `stage2/`, `stage2_refine/`, `stage2_harmonics/`, `stage2_harmonics_refine/`, `stage4_validation/`
 - `prediction/`
-  - points to `stage3_prediction/`
+  - now hosts the task-oriented prediction implementation root
 - `optimization/`
-  - points to `stage3_optimization/` and `stage3_optimization_real_ga/`
+  - now hosts the task-oriented optimization implementation roots
 - `baselines/legacy_stage3_training/`
   - points to `stage3_training/`
 - `shared/`

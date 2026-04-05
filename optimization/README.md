@@ -18,6 +18,7 @@ find:
 
 The task-oriented implementation now lives in:
 
+- `optimization/seed_ranking/`
 - `optimization/real_comsol_ga/`
 
 The historical directories are still retained for compatibility:

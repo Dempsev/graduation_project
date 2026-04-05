@@ -1,10 +1,18 @@
 from __future__ import annotations
 
-from common import run_python_script
-from shared.optimization.legacy_seed_only import CANDIDATE_POOL_SCRIPT as SCRIPT
+import runpy
+import sys
+from pathlib import Path
+
+
+ROOT = Path(__file__).resolve().parents[1]
+TARGET = ROOT / 'optimization' / 'seed_ranking' / 'build_optimization_candidate_pool_v1.py'
+
+
+def main() -> None:
+    sys.argv = [str(TARGET), *sys.argv[1:]]
+    runpy.run_path(str(TARGET), run_name='__main__')
 
 
 if __name__ == '__main__':
-    run_python_script(SCRIPT)
-    print('[DONE] optimization candidate pool v1 built')
-    print(f'[SCRIPT] {SCRIPT}')
+    main()

@@ -25,7 +25,7 @@ This mainline is valuable as repository history and as the source of training da
 
 Directory:
 
-- `stage3_prediction/`
+- `prediction/`
 
 Purpose:
 
@@ -36,9 +36,9 @@ Purpose:
 
 Current scripts:
 
-- `build_pure_prediction_dataset_v1.py`
-- `train_pure_bandgap_regressor_v1.py`
-- `train_pure_bandgap_twostage_v1.py`
+- `prediction/dataset/build_pure_prediction_dataset_v1.py`
+- `prediction/models/train_pure_bandgap_regressor_v1.py`
+- `prediction/models/train_pure_bandgap_twostage_v1.py`
 
 Runner entry points:
 
@@ -56,8 +56,8 @@ The recommended presentation-friendly prediction setup is now the two-stage widt
 
 Directories:
 
-- `stage3_optimization/`
-- `stage3_optimization_real_ga/`
+- `optimization/seed_ranking/`
+- `optimization/real_comsol_ga/`
 
 These should be read as two layers of the optimization side.
 
@@ -65,7 +65,7 @@ These should be read as two layers of the optimization side.
 
 Directory:
 
-- `stage3_optimization/`
+- `optimization/seed_ranking/`
 
 Purpose:
 
@@ -81,7 +81,7 @@ This layer still uses model-assisted screening and is mainly useful for cheaper 
 
 Directory:
 
-- `stage3_optimization_real_ga/`
+- `optimization/real_comsol_ga/`
 
 Purpose:
 
@@ -113,8 +113,8 @@ Instead it is:
 
 Bridge scripts:
 
-- `stage3_optimization_real_ga/select_plan_a_validated_seed_ids_v1.m`
-- `stage3_optimization_real_ga/get_comsol_in_loop_ga_plan_a_bridge_config_v1.m`
+- `optimization/real_comsol_ga/select_plan_a_validated_seed_ids_v1.m`
+- `optimization/real_comsol_ga/get_comsol_in_loop_ga_plan_a_bridge_config_v1.m`
 - `runners/run_stage3_a_then_comsol_in_loop_ga_v1.m`
 
 This means the final real-GA branch now depends on **real validated seed quality**, not on surrogate ranking alone.
@@ -137,10 +137,10 @@ This means the final real-GA branch now depends on **real validated seed quality
 If you only want the current thesis-ready structure, focus on:
 
 - prediction:
-  - `stage3_prediction/`
+  - `prediction/`
 - optimization:
-  - `stage3_optimization/`
-  - `stage3_optimization_real_ga/`
+  - `optimization/seed_ranking/`
+  - `optimization/real_comsol_ga/`
 - physical truth source:
   - `stage1/`
   - `stage2/`

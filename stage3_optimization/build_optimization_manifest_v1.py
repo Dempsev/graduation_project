@@ -1,21 +1,18 @@
 from __future__ import annotations
 
-import argparse
+import runpy
+import sys
 from pathlib import Path
 
-from common import run_python_script
-from shared.optimization.legacy_seed_only import DEFAULT_MANIFEST_POLICY as DEFAULT_POLICY
-from shared.optimization.legacy_seed_only import MANIFEST_SCRIPT as SCRIPT
+
+ROOT = Path(__file__).resolve().parents[1]
+TARGET = ROOT / 'optimization' / 'seed_ranking' / 'build_optimization_manifest_v1.py'
 
 
-def parse_args() -> argparse.Namespace:
-    parser = argparse.ArgumentParser(description='Build the optimization validation manifest for the refined seed-only mainline.')
-    parser.add_argument('--policy-json', type=Path, default=DEFAULT_POLICY)
-    return parser.parse_args()
+def main() -> None:
+    sys.argv = [str(TARGET), *sys.argv[1:]]
+    runpy.run_path(str(TARGET), run_name='__main__')
 
 
 if __name__ == '__main__':
-    args = parse_args()
-    run_python_script(SCRIPT, ['--policy-json', str(args.policy_json)])
-    print('[DONE] optimization validation manifest v1 built')
-    print(f'[SCRIPT] {SCRIPT}')
+    main()
