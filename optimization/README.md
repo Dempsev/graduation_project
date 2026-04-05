@@ -16,7 +16,11 @@ find:
 
 ## Current Implementation Roots
 
-Phase 1 keeps the implementation in the historical directories:
+The task-oriented implementation now lives in:
+
+- `optimization/real_comsol_ga/`
+
+The historical directories are still retained for compatibility:
 
 - surrogate-assisted layer:
   - `stage3_optimization/`

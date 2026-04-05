@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-TARGET = ROOT / 'stage3_prediction' / 'build_pure_prediction_dataset_v1.py'
+TARGET = ROOT / 'prediction' / 'dataset' / 'build_pure_prediction_dataset_v1.py'
 
 
 def main() -> None:

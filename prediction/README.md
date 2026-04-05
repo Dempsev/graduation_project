@@ -24,13 +24,12 @@ The prediction line should not depend on:
 
 ## Current Implementation Root
 
-The implementation currently lives in:
+The main implementation now lives in:
 
-- `stage3_prediction/`
+- `prediction/dataset/`
+- `prediction/models/`
 
-Phase 1 keeps that implementation intact and provides cleaner entry points from:
-
-- `prediction/runners/`
+The old `stage3_prediction/` directory is retained as a compatibility layer during the refactor.
 
 ## Preferred Scripts
 
