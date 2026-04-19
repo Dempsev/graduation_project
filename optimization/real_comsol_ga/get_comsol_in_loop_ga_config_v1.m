@@ -18,6 +18,9 @@ cfg.seedPointId = 'rf09_h00_center';
 cfg.seedWhitelistJson = '';
 cfg.forceSeedShapeIds = {};
 cfg.topKSeeds = 3;
+cfg.searchBoundsMode = 'local';
+cfg.seedSortFields = {'cascade_score','contact_prob','positive_prob','surrogate_pred_gap34_gain_Hz'};
+cfg.seedSortDirections = {'descend','descend','descend','descend'};
 
 cfg.paramNames = {'a1','a2','b1','b2','a3','b3','a4','b4','a5','b5','r0'};
 cfg.activeParamNames = {'a1','a2','b2','a4','b5','r0'};

@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 from copy import deepcopy
 from pathlib import Path
@@ -113,6 +113,37 @@ PROFILES: Dict[str, Dict[str, Any]] = {
             'scoring': ROOT / 'stage3_training' / 'policies' / 'seed_discovery_v11.json',
             'manifest': ROOT / 'stage3_training' / 'policies' / 'manifest_v11.json',
         },
+    },    'candidate_pool_optimization_v1': {
+        'name': 'candidate_pool_optimization_v1',
+        'source_stage': 'candidate_pool_optimization_v1',
+        'sample_prefix': 'candidate_pool_optimization_v1',
+        'shape_dataset': ROOT / 'data' / 'ml_dataset' / 'v4' / 'tasks' / 'shape_screening_contact_cls_v4.csv',
+        'stage1_positive_csv': ROOT / 'data' / 'comsol_batch' / 'stage1_shape_screening' / 'stage1_positive_shapes.csv',
+        'stage4_result_files': _stage4_paths(1, 2, 3, 5, 6, 7, 8, 9, 10, 11),
+        'exclude_stage4_validated_families': False,
+        'out_dir': ROOT / 'data' / 'ml_dataset' / 'v12' / 'candidate_pool_optimization_v1',
+        'point_manifest_name': 'candidate_point_manifest.csv',
+        'seed_manifest_name': 'candidate_seed_manifest.csv',
+        'pool_csv_name': 'candidate_pool_optimization_v1.csv',
+        'info_json_name': 'candidate_pool_info.json',
+        'pool_role': 'optimization_seed_pool_exploitation',
+        'point_strategy': 'optimization_seed_pool_v1',
+        'family_prior_source': 'stage1_positive_family_best_seed_with_stage4_history_retained',
+        'seed_prior_source': 'stage1_positive_family_best_seed',
+        'strategy_summary': 'one best stage1-positive seed per family with historical stage4-validated families retained for optimization-oriented high-recall basin selection',
+        'target_rule': 'optimization_seed_pool',
+        'manifest': {
+            'scored_csv': ROOT / 'data' / 'ml_runs' / 'candidate_pool_optimization_v1' / 'optimization_seed_predictions.csv',
+            'out_dir': ROOT / 'data' / 'ml_runs' / 'candidate_pool_optimization_v1' / 'validation_manifest_v1',
+            'manifest_csv_name': 'comsol_validation_manifest_optimization_v1.csv',
+            'ordered_csv_name': 'optimization_candidates_for_validation_v1.csv',
+            'selection_source': 'optimization_seed_pool_v1',
+            'selection_label_prefix': 'optimization_seed_pool_v1',
+        },
+        'policy_paths': {
+            'scoring': ROOT / 'stage3_training' / 'policies' / 'seed_discovery_v10.json',
+            'manifest': ROOT / 'stage3_training' / 'policies' / 'manifest_v10.json',
+        },
     },
 }
 
@@ -123,6 +154,8 @@ for profile in PROFILES.values():
         point['point_strategy'] = profile['point_strategy']
         point['family_prior_source'] = profile['family_prior_source']
         point['seed_prior_source'] = profile['seed_prior_source']
+        if 'pool_role' in profile:
+            point['pool_role'] = profile['pool_role']
     profile['point_specs'] = point_specs
 
 

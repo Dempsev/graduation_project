@@ -1,10 +1,18 @@
 # Dual-Line Workflow Overview
 
-This note summarizes how the repository is organized after splitting the project into a prediction line and an optimization line.
+This note summarizes the Phase-1 thesis-facing architecture after separating the
+repository into a truth layer, a model layer, and a search layer.
 
-## 1. Legacy Mainline
+The most important interpretation change is:
 
-The historical mainline is still present in the repository and should be understood as a mixed closed loop:
+- the old stage-oriented workflow is preserved
+- but it is no longer the preferred way to explain the repository
+
+## 1. Historical Mainline
+
+The historical mainline is still present and remains valuable as repository history.
+
+It is the old mixed closed loop:
 
 1. `stage1/`
    Screen random snake shapes under a trusted baseline point.
@@ -19,147 +27,143 @@ The historical mainline is still present in the repository and should be underst
 6. `stage4_validation/`
    Run COMSOL validation from generated manifests and feed new truth back into the loop.
 
-This mainline is valuable as repository history and as the source of training data, but it mixes prediction, ranking, and optimization into one storyline.
+This path should now be read as:
 
-## 2. New Prediction Line
+- historical experiment history
+- truth accumulation source
+- baseline source for later comparison
+
+It should no longer be treated as the only thesis-ready narrative.
+
+## 2. Truth Layer
+
+Directory:
+
+- `physics_pipeline/`
+
+Meaning:
+
+- the official Phase-1 entry point for **physical truth production**
+
+Implementation roots still remain in:
+
+- `stage1/`
+- `stage2/`
+- `stage2_refine/`
+- `stage2_harmonics/`
+- `stage2_harmonics_refine/`
+- `stage4_validation/`
+
+Interpretation:
+
+- these directories are one connected truth-production layer
+- later prediction and optimization layers should be understood as consumers of this truth
+
+## 3. Model Layer
 
 Directory:
 
 - `prediction/`
 
-Purpose:
+Meaning:
 
-- define a clean forward prediction task
-- input: shape geometry descriptors + Fourier parameters
-- output: bandgap targets such as `gap34_width_Hz`
-- evaluation: train / val / test and external `stage4_validation*` holdout
+- the official Phase-1 entry point for **prediction / modeling**
 
-Current scripts:
+This layer now contains two sub-stories:
 
-- `prediction/dataset/build_pure_prediction_dataset_v1.py`
-- `prediction/models/train_pure_bandgap_regressor_v1.py`
-- `prediction/models/train_pure_bandgap_twostage_v1.py`
+### 3.1 Global Prediction Baseline
 
-Runner entry points:
+- shape + parameter -> global bandgap targets
+- includes fixed-gap and max-gap style prediction
+- remains the modeling baseline
 
-- `runners/run_stage3_build_pure_prediction_dataset_v1.m`
-- `runners/run_stage3_train_pure_bandgap_regressor_v1.m`
-- `runners/run_stage3_train_pure_bandgap_twostage_v1.m`
+### 3.2 Target-Band Conditional Prediction Mainline
 
-The recommended presentation-friendly prediction setup is now the two-stage width predictor:
+- shape + parameter + target band -> open probability + overlap / cover prediction
+- represented by:
+  - `prediction_targetband_v1/`
+  - `prediction_targetband_param_v1/`
 
-1. classify whether the fixed `3-4` gap opens
-2. regress the positive width
-3. combine them into an expected-width prediction
+This target-band route is the planned next mainline for design-oriented prediction.
 
-## 3. New Optimization Line
-
-Directories:
-
-- `optimization/seed_ranking/`
-- `optimization/real_comsol_ga/`
-
-These should be read as two layers of the optimization side.
-
-### 3.1 Surrogate-Assisted Optimization Layer
+## 4. Search Layer
 
 Directory:
 
-- `optimization/seed_ranking/`
+- `optimization/`
 
-Purpose:
+Meaning:
 
-- isolate optimization tasks from the old mixed `stage3_training/` mainline
-- build candidate pools
-- score candidates
-- build manifests
-- run conservative local GA branches
+- the official Phase-1 entry point for **search / optimization**
 
-This layer still uses model-assisted screening and is mainly useful for cheaper exploration and seed filtering.
+This layer should now be read as three routes:
 
-### 3.2 Real COMSOL-In-Loop Optimization Layer
+### 4.1 Seed Ranking Baseline
 
-Directory:
-
-- `optimization/real_comsol_ga/`
-
-Purpose:
-
-- run direct COMSOL-in-the-loop GA
-- optimize real `gap34_gain_Hz`
-- avoid surrogate-only fitness drift
-
-Current scripts:
-
-- `get_comsol_in_loop_ga_config_v1.m`
-- `run_comsol_in_loop_ga_v1.m`
-
-Runner:
-
-- `runners/run_stage3_comsol_in_loop_ga_v1.m`
-
-## 4. A + Real-GA Mainline
-
-The recommended optimization mainline is no longer:
-
-- rank everything with a surrogate
-- then optionally do a tiny GA tail step
-
-Instead it is:
-
-1. use plan-A style conservative local optimization to probe multiple seed shapes
-2. use real COMSOL validation to identify which seeds are genuinely strong
-3. pass only those real-validated seeds into direct COMSOL-in-loop GA
-
-Bridge scripts:
-
-- `optimization/real_comsol_ga/select_plan_a_validated_seed_ids_v1.m`
-- `optimization/real_comsol_ga/get_comsol_in_loop_ga_plan_a_bridge_config_v1.m`
-- `runners/run_stage3_a_then_comsol_in_loop_ga_v1.m`
-
-This means the final real-GA branch now depends on **real validated seed quality**, not on surrogate ranking alone.
-
-## 5. Recommended Thesis Structure
-
-### Prediction Line
-
-- data source: accumulated truth from `stage1/2/4`
-- task: shape + parameter -> bandgap
-- output: prediction accuracy
-
-### Optimization Line
-
-- stage A: conservative local joint optimization for seed comparison
-- stage B: real COMSOL-in-loop GA for final high-confidence refinement
-
-## 6. Repository Reading Guide
-
-If you only want the current thesis-ready structure, focus on:
-
-- prediction:
-  - `prediction/`
-- optimization:
+- directory:
   - `optimization/seed_ranking/`
+- role:
+  - low-cost candidate generation
+  - model-assisted front-end filtering
+  - comparison baseline
+
+`seed` remains useful, but only as a low-cost baseline and front-end.
+
+### 4.2 True Global Real-GA Baseline
+
+- directory:
   - `optimization/real_comsol_ga/`
-- physical truth source:
-  - `stage1/`
-  - `stage2/`
-  - `stage2_harmonics/`
-  - `stage4_validation/`
+- role:
+  - direct COMSOL-in-the-loop real search
+  - current strongest real-optimization baseline in the repository
 
-If you want the historical experiment path, read:
+### 4.3 Target-Band-Conditioned Optimization Planned Mainline
 
-- `stage3_training/`
+- next intended route after the architecture cleanup
+- uses target-band conditional prediction to drive design-oriented search
+- promoted in architecture now, implemented further in the next phase
 
-That directory remains the historical mainline, but it should no longer be treated as the only narrative for the thesis.
+## 5. What `stage3_training/` Means Now
 
-## 7. Phase-1 Refactor Reading Order
+`stage3_training/` should now be interpreted as:
 
-The repository now has a task-oriented top layer that should be preferred when reading the thesis-ready structure:
+- a legacy mixed mainline
+- a baseline source
+- a repository-history anchor
+
+It remains valuable because it still contains:
+
+- historical candidate ranking logic
+- training utilities used by later lines
+- comparison routes that are still useful in the thesis
+
+But it is no longer the recommended top-level reading entry.
+
+## 6. Recommended Reading Order
+
+If you want the thesis-facing structure, read in this order:
 
 1. `physics_pipeline/`
 2. `prediction/`
 3. `optimization/`
 4. `baselines/`
 
-The historical stage directories remain in place underneath that layer to preserve compatibility with existing scripts and experiment artifacts.
+If you want historical experiment context afterward, read:
+
+- `stage3_training/`
+
+## 7. Default Next-Step Order
+
+Phase 1 fixes the architecture language first.
+
+The default next-step order is:
+
+1. architecture cleanup first
+2. target-band execution second
+
+That means:
+
+- Phase 1 does not merge stage directories
+- Phase 1 does not remove seed code
+- Phase 1 does not yet make target-band optimization the implemented default
+- Phase 1 only makes the intended mainline explicit

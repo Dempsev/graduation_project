@@ -1,4 +1,4 @@
-﻿from __future__ import annotations
+from __future__ import annotations
 
 import csv
 import json
@@ -119,10 +119,11 @@ def build_seed_manifest(shape_df: pd.DataFrame, stage1_df: pd.DataFrame, exclude
     for col in ['gap_gain_Hz', 'gap_target_Hz', 'contact_length']:
         stage1[col] = pd.to_numeric(stage1[col], errors='coerce')
 
-    stage1 = stage1[~stage1['shape_family'].isin(excluded_families)].copy()
+    if excluded_families:
+        stage1 = stage1[~stage1['shape_family'].isin(excluded_families)].copy()
     stage1 = stage1[stage1['shape_id'].astype(str).isin(shape_lookup.index.astype(str))].copy()
     if stage1.empty:
-        raise RuntimeError('No stage1 positive seeds remain after excluding validated families.')
+        raise RuntimeError('No stage1 positive seeds remain after applying family filters.')
 
     reps = stage1.sort_values(
         ['shape_family', 'gap_gain_Hz', 'contact_length', 'shape_id'],
@@ -199,7 +200,7 @@ def build_candidate_pool_rows(
                 'matches_preferred_direction': 0,
                 'within_directional_window': 1,
                 'selection_priority': 0,
-                'target_rule': 'seed_only_family_discovery',
+                'target_rule': str(profile.get('target_rule', 'seed_only_family_discovery')), 
                 'preferred_direction': '',
                 'directional_offset': '',
                 'allowed_offsets': '0',
@@ -284,7 +285,8 @@ def build_candidate_pool_for_profile(profile: Dict[str, Any]) -> Dict[str, Any]:
     ensure_dir(out_dir)
     shape_df = read_csv(Path(profile['shape_dataset']))
     stage1_df = read_csv(Path(profile['stage1_positive_csv']))
-    excluded_families = collect_excluded_families(list(profile['stage4_result_files']))
+    exclude_validated = bool(profile.get('exclude_stage4_validated_families', True))
+    excluded_families = collect_excluded_families(list(profile['stage4_result_files'])) if exclude_validated else set()
     seed_manifest = build_seed_manifest(shape_df, stage1_df, excluded_families)
     pool_rows, info = build_candidate_pool_rows(shape_df, seed_manifest, list(profile['point_specs']), profile, len(excluded_families))
     info['excluded_families'] = sorted(excluded_families)

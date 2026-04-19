@@ -1,39 +1,48 @@
-﻿# COAD: Physics-Data Co-Optimization for Mechanical Metastructure Design
+# COAD: Physics-Data Co-Optimization for Mechanical Metastructure Design
 
 ## Overview
 
 This repository contains the full working codebase for a graduation-project workflow on **bandgap-oriented design of mechanical / phononic metastructures**.
 
-The project is not a single surrogate-model demo. It is a closed loop that combines:
+The project is not a single surrogate-model demo. It is a research workflow that combines:
 
-1. COMSOL + MATLAB physical screening
-2. database construction from random snake shapes, low-order Fourier perturbations, and higher-order harmonics
-3. classifier / regressor training
-4. cascade-style candidate ranking
-5. physical re-validation back in COMSOL
+1. physical truth production with COMSOL + MATLAB
+2. truth accumulation from snake-generated shapes, Fourier perturbations, and later validation rounds
+3. prediction / modeling over the accumulated truth
+4. search / optimization using real truth or model guidance
 
-The current codebase preserves the full iteration history from `v1` onward and now converges on a finalized mainline built around the `v10` seed-only workflow plus its later refinements: calibrated scoring, diversity-aware manifesting, a completion pass over the remaining stage1-positive families, and a tightly constrained GA local tuner. The repository is organized around the research finding that **broad-transfer points do not generalize reliably, while targeted exploitation does**.
+Phase 1 now interprets the repository through a thesis-facing three-layer architecture:
+
+1. `physics_pipeline/` as the **truth layer**
+2. `prediction/` as the **model layer**
+3. `optimization/` as the **search layer**
+
+The historical `stage*` and `stage3_training/` paths are preserved, but they are no
+longer the preferred top-level reading path.
 
 ## Current Research Status
 
-The main thesis storyline is now stable.
+The current thesis-facing picture is:
 
-- The physical evaluation baseline is fixed: soft matrix + hard inclusion, trusted baseline point, and the fixed `3-4` bandgap label (`gap34_Hz`, `gap34_gain_Hz`).
-- Broad rollout has been tested and rejected through multiple physical validation rounds.
-- The validated high-value exploitation point on the main seed-only line is now:
-  - `rf09_h00_center`
-- The older `rf09_h09_b5_002_a4_0015` point is retained as a lightweight control / comparison point in the refined workflow.
-- Two transfer modes have been established:
-  - **directional exploitation** on already validated families
-  - **seed-only discovery** on unseen families
-- Across the later validation rounds, the most reliable new-family entry point is currently:
-  - `stage1 weak_positive` seeds
-- The original stage1-positive family library from the snake-generated shape bank has now been exhausted on the mainline:
-  - all `54` stage1-positive families have been physically covered through the combined `v10` + `v11` completion passes
-- The practical conclusion is now sharper:
-  - the mainline should be treated as complete on the current library unless new shapes / new families are generated
+- the physical baseline is fixed around the soft-matrix / hard-inclusion setup and the trusted reference point
+- the repository already contains a large accumulated body of real physical truth from `stage1` through `stage4_validation`
+- global and fixed-gap prediction lines are working baselines
+- target-band conditional prediction has already been established as the next modeling direction
+- real COMSOL-in-loop GA now provides the strongest current real-search baseline
 
-In other words, this repository now reflects a **family-aware / step-aware targeted exploitation workflow**, not a global blind search workflow.
+The most important optimization interpretation change is:
+
+- `seed` is still useful
+- but only as a **low-cost candidate-generation and comparison baseline**
+- not as the final optimization mainline
+
+That means the repository should now be read as:
+
+- truth first
+- model second
+- search third
+
+rather than as one mixed seed-first stage3 storyline.
 
 ## Repository Layout
 
@@ -60,224 +69,142 @@ coad/
   .gitignore
 ```
 
-### Directory Roles
-
-- `model_core/`: shared COMSOL-side functions such as materials, geometry setup, boundary selection, eigenfrequency extraction, and result packaging.
-- `stage1/` to `stage2_harmonics_refine/`: physical screening logic before machine learning.
-- `stage3_dataset/`: converts accumulated physical results into versioned training datasets.
-- `stage3_training/`: trains MLP classifiers / regressors, builds candidate pools, runs cascade scoring, and produces validation manifests.
-- `stage4_validation/`: centralizes `stage4_validation_ab_v*.m` configuration and CSV summary generation.
-- `runners/`: the main operational entry points used from MATLAB.
-- `data/`: all generated CSVs, manifests, COMSOL outputs, plots, and model checkpoints. This directory is intentionally git-ignored.
-
-## Phase-1 Refactor Layout
-
-The repository now also includes a task-oriented phase-1 refactor layer. This layer does not delete the historical stage-based structure. Instead, it adds a cleaner entry layer on top of it so the thesis can be read as:
-
-1. physical data production
-2. prediction
-3. optimization
-4. legacy baseline / historical comparison
+### Phase-1 Thesis-Facing Layout
 
 ```text
 coad/
-  physics_pipeline/         Task-oriented reading guide for physical data generation
-  prediction/              Clean forward-prediction entry layer
-  optimization/            Optimization entry layer (surrogate-assisted + real GA)
-  baselines/               Legacy mainline / comparison workflows
-  shared/                  Planned home for future shared abstractions
+  physics_pipeline/         Truth-layer entry for physical data production
+  prediction/               Model-layer entry for prediction and target-band modeling
+  optimization/             Search-layer entry for baseline and real optimization
+  baselines/                Historical or comparison workflows
+  shared/                   Future home for extracted shared helpers
 
-  stage1/                  Historical physical stage
-  stage2/                  Historical physical stage
-  stage2_refine/           Historical physical stage
-  stage2_harmonics/        Historical physical stage
-  stage2_harmonics_refine/ Historical physical stage
-  stage3_dataset/          Historical dataset builders
-  stage3_training/         Historical mixed candidate-discovery mainline
-  stage3_prediction/       Legacy compatibility layer for prediction paths
-  stage3_optimization/     Legacy compatibility layer for surrogate-assisted optimization
+  stage1/                   Historical physical truth production
+  stage2/                   Historical physical truth production
+  stage2_refine/            Historical physical truth production
+  stage2_harmonics/         Historical physical truth production
+  stage2_harmonics_refine/  Historical physical truth production
+  stage3_dataset/           Historical dataset builders
+  stage3_training/          Historical mixed mainline / baseline source
+  stage3_prediction/        Historical compatibility layer
+  stage3_optimization/      Historical compatibility layer
   stage3_optimization_real_ga/
-                            Legacy compatibility layer for real COMSOL-in-loop GA
-  stage4_validation/       Historical validation stage
+                           Historical compatibility layer
+  stage4_validation/        Historical physical validation stage
 ```
 
-### Phase-1 Refactor Mapping
-
-This first refactor is intentionally conservative:
-
-- the **new task-oriented directories** provide the preferred reading order and new runner entry points
-- the **historical stage directories** still remain available for compatibility
-- the **legacy mixed mainline** remains available as a baseline and repository history
-
-Current task-oriented mapping:
+### Current Directory Interpretation
 
 - `physics_pipeline/`
-  - points readers to `stage1/`, `stage2/`, `stage2_refine/`, `stage2_harmonics/`, `stage2_harmonics_refine/`, `stage4_validation/`
+  - official Phase-1 entry for **physical truth production**
 - `prediction/`
-  - now hosts the task-oriented prediction implementation root
+  - official Phase-1 entry for **prediction / modeling**
 - `optimization/`
-  - now hosts the task-oriented optimization implementation roots
-- `baselines/legacy_stage3_training/`
-  - points to `stage3_training/`
-- `shared/`
-  - reserved for a future second-stage refactor that will extract common objective, feature, split, I/O, and plotting utilities
+  - official Phase-1 entry for **search / optimization**
+- `baselines/`
+  - home for historical or comparison routes
+- `stage3_training/`
+  - legacy mixed mainline and baseline source, not the preferred top-level narrative
 
-## Phase Structure
+## How To Read The Repository Now
 
-## 1. Physical Screening Before ML
+### 1. Truth Layer
 
-### Stage 1: random snake shape screening
+Use:
 
-Main runner:
-- `runners/run_stage1_shape_screening.m`
+- `physics_pipeline/`
 
-Purpose:
-- test a large random snake library under the trusted baseline point
-- identify geometry-valid, contact-valid, and positive-gain shapes
-- produce the initial seed library for later transfer and ML
+Implementation roots remain in:
 
-### Stage 2: low-order robustness and refinement
+- `stage1/`
+- `stage2/`
+- `stage2_refine/`
+- `stage2_harmonics/`
+- `stage2_harmonics_refine/`
+- `stage4_validation/`
 
-Main runners:
-- `runners/run_stage2_fourier_robustness_screening.m`
-- `runners/run_stage2_refine_screening.m`
+### 2. Model Layer
 
-Purpose:
-- validate that strong positive results are not one-off lucky points
-- narrow the low-order parameter region (`a2 < 0`, `a1 ~ 0.45-0.50`, `b2 ~ 0-0.04`, small `r0` adjustment)
+Use:
 
-### Stage 2 harmonics: higher-order exploitation signals
+- `prediction/`
 
-Main runners:
-- `runners/run_stage2_harmonics_screening.m`
-- `runners/run_stage2_harmonics_refine_screening.m`
+Interpretation:
 
-Purpose:
-- test higher-order terms on top of the trusted low-order region
-- preserve the main finding that `a4 > 0` is the most useful retained harmonics direction on the main line
+- global bandgap prediction remains the modeling baseline
+- target-band conditional prediction is the planned modeling mainline
 
-## 2. Dataset and Model Building
+Relevant directories include:
 
-Dataset builders live in:
-- `stage3_dataset/`
+- `prediction/`
+- `prediction_v2/` to `prediction_v7/`
+- `prediction_targetband_v1/`
+- `prediction_targetband_param_v1/`
 
-Training and scoring code live in:
+### 3. Search Layer
+
+Use:
+
+- `optimization/`
+
+Interpretation:
+
+- `optimization/seed_ranking/` is the low-cost baseline / front-end
+- `optimization/real_comsol_ga/` contains the current real-search strong baseline
+- target-band-conditioned optimization is the planned next mainline
+
+Initial executable target-band prototypes now exist at:
+
+- `optimization/seed_ranking/run_targetband_seed_scoring_v1.py`
+- `optimization/seed_ranking/run_targetband_local_ga_v1.py`
+
+## Optimization Positioning In Phase 1
+
+The optimization layer now contains three roles:
+
+1. **Seed ranking baseline**
+   - cheap candidate generation
+   - historical comparison route
+   - not the final optimization mainline
+2. **True global real-GA baseline**
+   - current strongest real-search baseline
+   - direct COMSOL-in-loop search without surrogate-only drift
+3. **Target-band-conditioned optimization**
+   - next planned thesis-facing mainline after the Phase-1 cleanup
+
+This means the old seed-first narrative should now be interpreted as a baseline,
+not as the final thesis search definition.
+
+## Recommended Reading Order
+
+If you want the current thesis-facing structure, read in this order:
+
+1. `physics_pipeline/`
+2. `prediction/`
+3. `optimization/`
+4. `baselines/`
+
+If you need historical context afterward, then read:
+
 - `stage3_training/`
 
-Important tracked dataset/training versions:
-- `build_v5_training_dataset.py`: directional context introduced
-- `build_v6_training_dataset.py`: later validation data integrated
-- `build_v7_training_dataset.py`: training dataset updated through `stage4_validation_ab_v8`, with `stage1` reference context added for seed-only discovery
+## Default Next-Step Order
 
-Current model families:
-- contact classifier
-- positive-gain classifier
-- surrogate regressor
+Phase 1 fixes the architecture language first.
 
-The cascade logic always treats the classifiers as primary and the regressor as auxiliary.
+The default next-step order is now fixed as:
 
-## 3. Candidate Discovery and Validation
+1. architecture cleanup first
+2. target-band execution second
 
-Candidate-pool builders and validation manifests are versioned.
+So this round does **not**:
 
-Examples:
-- `stage3_training/build_candidate_pool_v5.py`
-- `stage3_training/build_candidate_pool_v8.py`
-- `stage3_training/build_candidate_pool_v9.py`
-- `stage3_training/build_candidate_pool_v10.py`
+- move directories
+- rename runners
+- rewrite COMSOL solver logic
+- remove seed code
 
-Validation runners:
-- `runners/run_stage4_validation_ab_v5.m`
-- `runners/run_stage4_validation_ab_v6.m`
-- `runners/run_stage4_validation_ab_v7.m`
-- `runners/run_stage4_validation_ab_v8.m`
-- `runners/run_stage4_validation_ab_v9.m`
-- `runners/run_stage4_validation_ab_v10.m`
-- `runners/run_stage4_validation_ab_ga_v1.m`
-
-These runners:
-- read a staged validation manifest
-- evaluate the requested shape-point cases in COMSOL
-- write per-case results
-- generate arm / point / shape summary tables automatically
-
-## Versioned Experiment Map
-
-### `v1`
-- first successful cascade broad validation
-- showed that the classifier front-end is necessary
-
-### `v2` to `v4`
-- tested parameter-aware models and broad-transfer assumptions
-- physically showed that broad transfer is not reliable
-
-### `v5` to `v6`
-- moved to targeted exploitation around validated seeds / families
-- established directional step exploitation on validated families
-
-### `v7`
-- tested optional new families with local transfer probes
-- showed that new families support seed transfer but not direct neighborhood expansion
-
-### `v8`
-- first strong seed-only discovery round on unseen families
-
-### `v9`
-- seed-only model-assisted discovery with a more conservative ranking line
-- showed the model had ranking value but should not be used as a hard gate on tail candidates
-
-### `v10`
-- refined shortlist strategy
-- prioritized `weak_positive` / `strong_positive` seeds and reduced neutral seeds to small probe slots
-
-### `v11` mainline completion
-- folded the later refinement branch back into the main seed-only workflow
-- expanded `v10` from a single trusted point into a small point cluster, then re-centered the main line on `rf09_h00_center`
-- added calibrated seed-discovery scoring and diversity-aware manifest selection
-- completed the remaining stage1-positive family coverage pass on the original snake-generated shape library
-- added a **conditional local GA tuner** that only activates on shapes that have already shown real COMSOL benefit under conservative local tuning
-- current whitelist example: `ep249_step33_contour_xy`, where the local tuner slightly outperformed the plain `rf09_h00_center` baseline in physical validation
-
-## Current Recommended Workflow
-
-If continuing the thesis from the current state, the recommended operational sequence is:
-
-1. Update / rebuild the training dataset if new physical truth has been added.
-2. Refresh the seed-discovery scoring calibration from the latest historical stage4 truth.
-3. Retrain the seed-discovery or directional models as needed.
-4. Build and score the next candidate pool.
-5. Generate a validation manifest.
-6. Run COMSOL validation with the matching `stage4_validation_ab_v*.m` runner.
-7. Analyze the resulting arm / point / shape summaries and feed the new truth back into the next calibration refresh.
-
-For the current repository state, the mainline seed-only path is:
-
-- candidate pool: `stage3_training/build_candidate_pool_v10.py`
-- scoring: `stage3_training/run_seed_discovery_scoring_v7.py`
-- manifest: `stage3_training/build_validation_manifest_v10.py`
-- COMSOL validation: `runners/run_stage4_validation_ab_v10.m`
-
-The `v11` completion pass should be interpreted as a **library-closing extension of the same mainline**, not as a separate research branch:
-
-- remaining-family candidate pool: `stage3_training/build_candidate_pool_v11.py`
-- remaining-family scoring: `stage3_training/run_seed_discovery_scoring_v7.py`
-- remaining-family manifest: `stage3_training/build_validation_manifest_v11.py`
-- remaining-family COMSOL validation: `runners/run_stage4_validation_ab_v11.m`
-
-For the current optional GA refinement branch, the operational path is:
-
-- conservative local GA search: `stage3_training/run_parametric_ga_seed_search_v1.py`
-- shape whitelist: `stage3_training/ga_shape_whitelist_v1.json`
-- GA validation manifest: `stage3_training/build_ga_validation_manifest_v1.py`
-- COMSOL validation: `runners/run_stage4_validation_ab_ga_v1.m`
-
-The intended role of the GA module is **not** to replace the main seed-only workflow. It is a conditional post-ranking local tuner that is only enabled for shape families that have already demonstrated real COMSOL upside under very small parameter perturbations.
-
-If no new teacher requirements arrive, the repository can now be treated as **temporarily frozen at a complete milestone** for the current snake-generated shape library:
-
-- the mainline has covered all stage1-positive families available in the current library
-- GA remains an optional supporting branch rather than a required next step
-- further expansion would require either new shape generation or a new research question
+It only makes the repository mainline and baseline positions explicit.
 
 ## Environment
 
@@ -303,9 +230,11 @@ This repository tracks **source code and documentation**, not generated research
 ## What This Repository Is Good For
 
 This codebase is appropriate for:
+
 - reproducing the workflow logic used in the thesis
-- continuing targeted validation rounds
-- extending the dataset / training scripts
-- writing the methods and workflow sections of the thesis from real code
+- understanding the truth / model / search separation
+- continuing target-band or global-search oriented work after the Phase-1 cleanup
+- using historical stage and seed routes as baselines or comparison points
+- writing methods and workflow sections of the thesis from real code
 
 It is not intended to be a polished end-user software package. It is a research codebase with preserved experiment history.

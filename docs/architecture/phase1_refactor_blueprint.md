@@ -1,5 +1,11 @@
 # Phase-1 Refactor Blueprint
 
+This file remains a historical planning note for the original top-level refactor.
+
+For the current Phase-1 architectural decision, use:
+
+- `docs/architecture/phase1_logic_refactor_decision.md`
+
 ## Goal
 
 Convert the repository from a purely stage-oriented historical layout into a thesis-friendly task-oriented layout without breaking already validated workflows.

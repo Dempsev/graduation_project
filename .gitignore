@@ -22,6 +22,10 @@ __pycache__/
 # are written under data/ and should not be committed.
 data/
 web/
+tmp/
+tmp_ppt_rebuild/
+output/
+.worktrees/
 
 # Legacy snake runtime logs
 snake/__pycache__/

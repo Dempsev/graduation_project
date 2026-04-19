@@ -26,6 +26,7 @@ fprintf('  seed_scored_csv=%s\n', cfg.seedScoredCsv);
 fprintf('  out_dir=%s\n', cfg.outDir);
 fprintf('  seeds=%d, population=%d, generations=%d\n', height(seedTable), cfg.populationSize, cfg.generations);
 fprintf('  active_params=%s\n', strjoin(cfg.activeParamNames, ','));
+fprintf('  search_bounds_mode=%s\n', char(string(cfg.searchBoundsMode)));
 
 for seedIdx = 1:height(seedTable)
     seedRow = seedTable(seedIdx, :);
@@ -117,8 +118,19 @@ if isempty(seedTable)
     error('run_comsol_in_loop_ga_v1:NoSeedRows', 'No seed rows available after point/whitelist filtering.');
 end
 
-seedTable = sortrows(seedTable, {'cascade_score','contact_prob','positive_prob','surrogate_pred_gap34_gain_Hz'}, ...
-    {'descend','descend','descend','descend'});
+sortFields = cellstr(string(cfg.seedSortFields));
+sortDirections = cellstr(string(cfg.seedSortDirections));
+if numel(sortFields) ~= numel(sortDirections)
+    error('run_comsol_in_loop_ga_v1:InvalidSeedSortConfig', ...
+        'seedSortFields and seedSortDirections must have the same length.');
+end
+missingFields = setdiff(sortFields, seedTable.Properties.VariableNames, 'stable');
+if ~isempty(missingFields)
+    error('run_comsol_in_loop_ga_v1:MissingSeedSortFields', ...
+        'Seed scored csv missing sort fields: %s', strjoin(missingFields, ', '));
+end
+
+seedTable = sortrows(seedTable, sortFields, sortDirections);
 shapeMask = ~duplicated_strings(string(seedTable.shape_id));
 seedTable = seedTable(shapeMask, :);
 seedTable = seedTable(1:min(height(seedTable), cfg.topKSeeds), :);
@@ -159,7 +171,20 @@ for i = 1:height(seedTable)
     seen(end + 1, 1) = pointId; %#ok<AGROW>
     mask(i) = true;
 end
-pointTable = seedTable(mask, {'main_id','point_id','a1','a2','b2','r0','a3','b3','a4','b4','a5','b5'});
+pointTable = table();
+pointTable.main_id = seedTable.main_id(mask);
+pointTable.point_id = seedTable.point_id(mask);
+pointTable.a1 = pick_reference_column(seedTable, mask, 'a1');
+pointTable.a2 = pick_reference_column(seedTable, mask, 'a2');
+pointTable.b1 = pick_reference_column(seedTable, mask, 'b1');
+pointTable.b2 = pick_reference_column(seedTable, mask, 'b2');
+pointTable.r0 = pick_reference_column(seedTable, mask, 'r0');
+pointTable.a3 = pick_reference_column(seedTable, mask, 'a3');
+pointTable.b3 = pick_reference_column(seedTable, mask, 'b3');
+pointTable.a4 = pick_reference_column(seedTable, mask, 'a4');
+pointTable.b4 = pick_reference_column(seedTable, mask, 'b4');
+pointTable.a5 = pick_reference_column(seedTable, mask, 'a5');
+pointTable.b5 = pick_reference_column(seedTable, mask, 'b5');
 end
 
 function state = load_or_init_state(cfg, seedTable)
@@ -195,13 +220,15 @@ population.individual_index = transpose((1:cfg.populationSize));
 for i = 2:cfg.populationSize
     for j = 1:numel(cfg.activeParamNames)
         name = cfg.activeParamNames{j};
-        bounds = local_bounds_for_param(cfg, seedRow, name);
+        bounds = search_bounds_for_param(cfg, seedRow, name);
         baseValue = double(seedRow.(name)(1));
         if bounds(1) == bounds(2)
             population.(name)(i) = baseValue;
             continue;
         end
-        if rand < 0.85
+        if strcmpi(string(cfg.searchBoundsMode), "global")
+            value = bounds(1) + rand * (bounds(2) - bounds(1));
+        elseif rand < 0.85
             span = bounds(2) - bounds(1);
             value = baseValue + randn * span * 0.18;
         else
@@ -234,7 +261,7 @@ for i = eliteCount + 1:cfg.populationSize
             population.(name)(i) = double(seedRow.(name)(1));
             continue;
         end
-        bounds = local_bounds_for_param(cfg, seedRow, name);
+        bounds = search_bounds_for_param(cfg, seedRow, name);
         alpha = rand;
         value = alpha * double(parentA.(name)(1)) + (1 - alpha) * double(parentB.(name)(1));
         if rand <= cfg.mutationRate && bounds(1) < bounds(2)
@@ -271,7 +298,7 @@ resultRow.seed_candidate_id = string(seedRow.candidate_id(1));
 resultRow.seed_source_sample_id = string(seedRow.sample_id(1));
 resultRow.generation = generation;
 resultRow.individual_index = individualIdx;
-resultRow.b1 = double(seedRow.b1(1));
+resultRow.b1 = double(candidate.b1(1));
 resultRow.base_a1 = double(seedRow.a1(1));
 resultRow.base_a2 = double(seedRow.a2(1));
 resultRow.base_b1 = double(seedRow.b1(1));
@@ -303,10 +330,19 @@ function pointSpec = point_spec_from_candidate(seedRow, candidate)
 pointSpec = struct( ...
     'main_id', char(string(seedRow.main_id(1))), ...
     'point_id', char(string(seedRow.point_id(1))), ...
-    'a1', double(candidate.a1(1)), 'a2', double(candidate.a2(1)), 'b2', double(candidate.b2(1)), 'r0', double(candidate.r0(1)), ...
+    'a1', double(candidate.a1(1)), 'a2', double(candidate.a2(1)), 'b1', double(candidate.b1(1)), 'b2', double(candidate.b2(1)), 'r0', double(candidate.r0(1)), ...
     'a3', double(candidate.a3(1)), 'b3', double(candidate.b3(1)), 'a4', double(candidate.a4(1)), 'b4', double(candidate.b4(1)), ...
     'a5', double(candidate.a5(1)), 'b5', double(candidate.b5(1)) ...
 );
+end
+
+function values = pick_reference_column(seedTable, mask, name)
+refName = ['reference_' name];
+if ismember(refName, seedTable.Properties.VariableNames)
+    values = seedTable.(refName)(mask);
+else
+    values = seedTable.(name)(mask);
+end
 end
 
 function sampleMeta = sample_meta_from_seed(cfg, seedRow, seedIdx, generation, individualIdx)
@@ -522,8 +558,13 @@ for i = 1:numel(seedRow.Properties.VariableNames)
 end
 end
 
-function bounds = local_bounds_for_param(cfg, seedRow, name)
+function bounds = search_bounds_for_param(cfg, seedRow, name)
 globalBounds = cfg.globalBounds.(name);
+if strcmpi(string(cfg.searchBoundsMode), "global")
+    bounds = globalBounds;
+    return;
+end
+
 halfWidth = cfg.localHalfWidths.(name);
 baseValue = double(seedRow.(name)(1));
 if globalBounds(1) == globalBounds(2) || halfWidth <= 0
@@ -541,7 +582,7 @@ function dist = normalized_distance_from_seed(cfg, seedRow, candidate)
 parts = [];
 for i = 1:numel(cfg.activeParamNames)
     name = cfg.activeParamNames{i};
-    bounds = local_bounds_for_param(cfg, seedRow, name);
+    bounds = search_bounds_for_param(cfg, seedRow, name);
     span = bounds(2) - bounds(1);
     if span <= 0
         continue;
@@ -595,7 +636,7 @@ end
 function save_config_json(cfg)
 try
     payload = struct();
-    fields = {'gaId','seedScoredCsv','seedPointId','seedWhitelistJson','topKSeeds','populationSize','generations', ...
+    fields = {'gaId','seedScoredCsv','seedPointId','seedWhitelistJson','topKSeeds','searchBoundsMode','populationSize','generations', ...
         'eliteCount','mutationRate','mutationScale','distancePenaltyWeight','randomSeed','topCandidatesPerSeedExport', ...
         'failurePenaltyGeometry','failurePenaltyContact','failurePenaltySolve','paramNames','activeParamNames', ...
         'globalBounds','localHalfWidths','materialCase','fixedGapBand','configSignature'};

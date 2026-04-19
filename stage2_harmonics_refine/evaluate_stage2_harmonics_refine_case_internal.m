@@ -1,4 +1,4 @@
-﻿function result = evaluate_stage2_harmonics_refine_case_internal(cfg, sampleMeta, pointSpec, refPoint)
+function result = evaluate_stage2_harmonics_refine_case_internal(cfg, sampleMeta, pointSpec, refPoint)
 %EVALUATE_STAGE2_HARMONICS_REFINE_CASE_INTERNAL Shared worker for lightweight harmonic refine cases.
 
 if nargin < 4
@@ -86,6 +86,7 @@ result.main_id = string(pointSpec.main_id);
 result.point_id = string(pointSpec.point_id);
 result.a1 = pointSpec.a1;
 result.a2 = pointSpec.a2;
+result.b1 = pointSpec.b1;
 result.b2 = pointSpec.b2;
 result.r0 = pointSpec.r0;
 result.a3 = pointSpec.a3;

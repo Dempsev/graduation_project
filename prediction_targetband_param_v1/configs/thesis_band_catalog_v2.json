@@ -1,0 +1,61 @@
+{
+  "catalog_name": "thesis_band_catalog_v2",
+  "training_dataset_tag": "windows_dense_v5_gapdiversity_aug_v1",
+  "training_role": "dense parametric training grid with gap-diversity augmentation",
+  "serving_role": "thesis-facing inverse-design target windows",
+  "notes": [
+    "This catalog fixes a finite engineering-facing set of target bands instead of claiming arbitrary continuous-band extrapolation.",
+    "The current strategy is to densify truth coverage within this catalog and evaluate conditional prediction plus inverse design inside the catalog.",
+    "Bands above 180 Hz remain the main supplementation focus because they are harder and were historically under-covered."
+  ],
+  "bands": [
+    {
+      "target_band_tag": "band140_180",
+      "band_low_Hz": 140.0,
+      "band_high_Hz": 180.0,
+      "label": "Lower-Mid Anchor",
+      "role": "coverage anchor",
+      "reason": "Provides a relatively accessible lower-mid reference band and helps stabilize the conditional predictor."
+    },
+    {
+      "target_band_tag": "band160_200",
+      "band_low_Hz": 160.0,
+      "band_high_Hz": 200.0,
+      "label": "Mid Transition",
+      "role": "transition window",
+      "reason": "Bridges the lower-mid and core mid-band regions and is useful for continuity across neighboring targets."
+    },
+    {
+      "target_band_tag": "band180_220",
+      "band_low_Hz": 180.0,
+      "band_high_Hz": 220.0,
+      "label": "Mid Core",
+      "role": "main thesis target",
+      "reason": "This remains the most informative default engineering target and the current optimization showcase band."
+    },
+    {
+      "target_band_tag": "band200_240",
+      "band_low_Hz": 200.0,
+      "band_high_Hz": 240.0,
+      "label": "Upper-Mid Hard",
+      "role": "priority supplementation band",
+      "reason": "Historically sparse and difficult; gap-diversity augmentation already showed this band benefits strongly from targeted supplementation."
+    },
+    {
+      "target_band_tag": "band220_260",
+      "band_low_Hz": 220.0,
+      "band_high_Hz": 260.0,
+      "label": "High-Mid Selective",
+      "role": "selective harder window",
+      "reason": "Useful for testing whether the model can support more selective high-mid inverse-design requests."
+    },
+    {
+      "target_band_tag": "band240_280",
+      "band_low_Hz": 240.0,
+      "band_high_Hz": 280.0,
+      "label": "High Sparse",
+      "role": "rare-event probe",
+      "reason": "Keeps a challenging higher-frequency target in the catalog so supplementation pressure is not limited to the easier mid-band region."
+    }
+  ]
+}

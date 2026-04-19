@@ -1,0 +1,68 @@
+{
+  "catalog_name": "curated_band_catalog_v1",
+  "training_dataset_tag": "windows_dense_v4",
+  "training_role": "dense parametric training grid",
+  "serving_role": "curated engineering-facing output bands",
+  "notes": [
+    "Dense windows are used for model training so the conditional model sees richer center-frequency and width variation.",
+    "Only a curated subset of bands is exposed in the application-facing layer to keep the output interpretable and aligned with engineering use cases."
+  ],
+  "bands": [
+    {
+      "target_band_tag": "band120_160",
+      "band_low_Hz": 120.0,
+      "band_high_Hz": 160.0,
+      "label": "Low-Frequency Sparse",
+      "role": "precision-oriented screening window",
+      "reason": "Useful when the goal is to find rare structures that can open a low-frequency gap."
+    },
+    {
+      "target_band_tag": "band180_220",
+      "band_low_Hz": 180.0,
+      "band_high_Hz": 220.0,
+      "label": "Mid-Band Core",
+      "role": "main discriminative mid-band window",
+      "reason": "This window has strong structure-frequency interaction and is a good default engineering target."
+    },
+    {
+      "target_band_tag": "band180_240",
+      "band_low_Hz": 180.0,
+      "band_high_Hz": 240.0,
+      "label": "Mid-Band Wide",
+      "role": "broader mid-band envelope",
+      "reason": "Useful when a wider acceptable operating band is preferred over a narrow center window."
+    },
+    {
+      "target_band_tag": "band180_260",
+      "band_low_Hz": 180.0,
+      "band_high_Hz": 260.0,
+      "label": "Mid-Band Envelope",
+      "role": "broad envelope check",
+      "reason": "Captures whether a design supports a robust band gap across a larger mid-band span."
+    },
+    {
+      "target_band_tag": "band200_260",
+      "band_low_Hz": 200.0,
+      "band_high_Hz": 260.0,
+      "label": "Upper-Mid Band",
+      "role": "upper-mid engineering window",
+      "reason": "Useful when the target application wants a slightly higher working band than the core mid-band window."
+    },
+    {
+      "target_band_tag": "band220_260",
+      "band_low_Hz": 220.0,
+      "band_high_Hz": 260.0,
+      "label": "Upper-Mid Narrow",
+      "role": "narrow upper-mid screening window",
+      "reason": "Provides a more selective upper-mid check than the wider 200-260 envelope."
+    },
+    {
+      "target_band_tag": "band260_300",
+      "band_low_Hz": 260.0,
+      "band_high_Hz": 300.0,
+      "label": "High-Frequency Sparse",
+      "role": "high-frequency rare-event screening window",
+      "reason": "Useful when only a small fraction of structures are expected to satisfy the high-frequency target."
+    }
+  ]
+}
