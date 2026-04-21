@@ -107,6 +107,23 @@ This reading order reflects the intended interpretation:
 - conditional regressor:
   - `prediction_targetband_param_v1/runners/run_train_parametric_targetband_regressor_v1.py`
 
+## Current Frozen Mainline
+
+The currently frozen target-band modeling stack is:
+
+- band catalog:
+  - `prediction_targetband_param_v1/configs/thesis_band_catalog_v2.json`
+- dataset:
+  - `data/prediction_targetband_param_v1/v1/windows_dense_v8_truth_plus_exploratory_aug_v1/targetband_parametric_v1.csv`
+- classifier:
+  - `RF`
+- regressor:
+  - `HGB`
+- shape front-end:
+  - `data/analysis/targetband_shape_atlas_v1/`
+
+This should now be treated as the default thesis-facing modeling stack unless stronger evidence justifies a replacement.
+
 ## Phase-1 Recommendation
 
 For thesis structure and future implementation planning:

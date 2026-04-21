@@ -240,6 +240,59 @@ def summarize_metrics(fold_metrics: List[Dict[str, float]]) -> Dict[str, object]
     return summary
 
 
+def write_run_outputs(
+    run_root: Path,
+    args: argparse.Namespace,
+    feature_cols: List[str],
+    fold_metrics: List[Dict[str, float]],
+    prediction_rows: List[Dict[str, object]],
+    positive_rate: float,
+) -> Dict[str, object]:
+    save_csv_rows(
+        run_root / 'fold_metrics.csv',
+        ['fold', 'rows', 'accuracy', 'precision', 'recall', 'f1', 'balanced_accuracy'],
+        fold_metrics,
+    )
+    save_csv_rows(
+        run_root / 'predictions.csv',
+        ['fold', 'param_sample_id', 'design_id', 'source_stage', 'shape_id', 'shape_family', 'target_band_tag', 'target_band_low_Hz', 'target_band_high_Hz', 'target_gap_cover_ratio', 'y_true', 'y_prob', 'y_pred'],
+        prediction_rows,
+    )
+    per_band_rows = summarize_per_band(prediction_rows) if prediction_rows else []
+    save_csv_rows(
+        run_root / 'per_band_metrics.csv',
+        ['target_band_tag', 'rows', 'positive_rate', 'accuracy', 'precision', 'recall', 'f1', 'balanced_accuracy'],
+        per_band_rows,
+    )
+    save_json(
+        run_root / 'run_config.json',
+        {
+            'dataset': str(args.dataset),
+            'feature_set': ENRICHED_FEATURE_SET_NAME,
+            'feature_cols': feature_cols,
+            'eval_mode': args.eval_mode,
+            'group_key': args.group_key,
+            'n_splits': args.n_splits,
+            'min_stage_rows': args.min_stage_rows,
+            'n_estimators': args.n_estimators,
+            'min_samples_leaf': args.min_samples_leaf,
+            'max_features': args.max_features,
+            'threshold': args.threshold,
+            'seed': args.seed,
+            'model_family': args.model_family,
+            'band_features': BAND_FEATURES,
+            'hgb_learning_rate': args.hgb_learning_rate,
+            'hgb_max_iter': args.hgb_max_iter,
+            'hgb_max_leaf_nodes': args.hgb_max_leaf_nodes,
+            'hgb_max_depth': args.hgb_max_depth,
+        },
+    )
+    summary = summarize_metrics(fold_metrics) if fold_metrics else {'fold_count': 0}
+    summary['positive_rate'] = positive_rate
+    save_json(run_root / 'metrics_summary.json', summary)
+    return summary
+
+
 def main() -> None:
     args = parse_args()
     df = pd.read_csv(args.dataset)
@@ -271,57 +324,38 @@ def main() -> None:
         if not split_iter:
             raise RuntimeError('No leave-one-band-tag-out folds available.')
 
-    for fold_name, train_idx, test_idx in split_iter:
+    total_folds = len(split_iter)
+    print(f'[START] classifier run_root={run_root}')
+    print(f'[START] total_folds={total_folds} eval_mode={args.eval_mode} model_family={args.model_family}')
+
+    for fold_idx, (fold_name, train_idx, test_idx) in enumerate(split_iter, start=1):
         fold_dir = run_root / fold_name
         fold_dir.mkdir(parents=True, exist_ok=True)
         if (fold_dir / 'model.joblib').exists() and (fold_dir / 'metrics.json').exists():
+            print(f'[{fold_idx}/{total_folds}] REUSE {fold_name} rows={len(test_idx)}')
             metrics, rows = load_completed_fold(df, test_idx, args, fold_name, fold_dir)
         else:
+            print(f'[{fold_idx}/{total_folds}] TRAIN {fold_name} rows={len(test_idx)}')
             metrics, rows = run_fold(df, train_idx, test_idx, feature_cols, args, fold_name, fold_dir)
+        print(
+            f'[{fold_idx}/{total_folds}] DONE {fold_name} '
+            f"f1={metrics['f1']:.4f} bal_acc={metrics['balanced_accuracy']:.4f}"
+        )
         fold_metrics.append({'fold': fold_name, 'rows': len(test_idx), **metrics})
         prediction_rows.extend(rows)
-
-    save_csv_rows(
-        run_root / 'fold_metrics.csv',
-        ['fold', 'rows', 'accuracy', 'precision', 'recall', 'f1', 'balanced_accuracy'],
-        fold_metrics,
-    )
-    save_csv_rows(
-        run_root / 'predictions.csv',
-        ['fold', 'param_sample_id', 'design_id', 'source_stage', 'shape_id', 'shape_family', 'target_band_tag', 'target_band_low_Hz', 'target_band_high_Hz', 'target_gap_cover_ratio', 'y_true', 'y_prob', 'y_pred'],
-        prediction_rows,
-    )
-    save_csv_rows(
-        run_root / 'per_band_metrics.csv',
-        ['target_band_tag', 'rows', 'positive_rate', 'accuracy', 'precision', 'recall', 'f1', 'balanced_accuracy'],
-        summarize_per_band(prediction_rows),
-    )
-    save_json(
-        run_root / 'run_config.json',
-        {
-            'dataset': str(args.dataset),
-            'feature_set': ENRICHED_FEATURE_SET_NAME,
-            'feature_cols': feature_cols,
-            'eval_mode': args.eval_mode,
-            'group_key': args.group_key,
-            'n_splits': args.n_splits,
-            'min_stage_rows': args.min_stage_rows,
-            'n_estimators': args.n_estimators,
-            'min_samples_leaf': args.min_samples_leaf,
-            'max_features': args.max_features,
-            'threshold': args.threshold,
-            'seed': args.seed,
-            'model_family': args.model_family,
-            'band_features': BAND_FEATURES,
-            'hgb_learning_rate': args.hgb_learning_rate,
-            'hgb_max_iter': args.hgb_max_iter,
-            'hgb_max_leaf_nodes': args.hgb_max_leaf_nodes,
-            'hgb_max_depth': args.hgb_max_depth,
-        },
-    )
-    summary = summarize_metrics(fold_metrics)
-    summary['positive_rate'] = float(df['target_gap_is_open'].mean())
-    save_json(run_root / 'metrics_summary.json', summary)
+        summary = write_run_outputs(
+            run_root,
+            args,
+            feature_cols,
+            fold_metrics,
+            prediction_rows,
+            positive_rate=float(df['target_gap_is_open'].mean()),
+        )
+        print(
+            f'[{fold_idx}/{total_folds}] PROGRESS '
+            f"f1_mean={summary['f1_mean']:.4f} "
+            f"bal_acc_mean={summary['balanced_accuracy_mean']:.4f}"
+        )
 
     print('[DONE] parametric target-band classifier training complete')
     print(f'[RUN] {run_root}')

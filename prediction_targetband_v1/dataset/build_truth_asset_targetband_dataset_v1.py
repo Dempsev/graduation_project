@@ -56,6 +56,12 @@ SOURCE_SPECS = [
         'tbl1_dir': ROOT / 'data' / 'comsol_batch' / 'comsol_in_loop_band_supplement_ga_v1' / 'tbl1_exports',
     },
     {
+        'source_name': 'band_supplement_exploratory_v2',
+        'source_stage': 'comsol_in_loop_band_supplement_exploratory_v2',
+        'csv_path': ROOT / 'data' / 'comsol_batch' / 'comsol_in_loop_band_supplement_exploratory_v2' / 'ga_history_v1.csv',
+        'tbl1_dir': ROOT / 'data' / 'comsol_batch' / 'comsol_in_loop_band_supplement_exploratory_v2' / 'tbl1_exports',
+    },
+    {
         'source_name': 'targetband_validation',
         'source_stage': 'stage4_validation_targetband_v1',
         'csv_path': ROOT / 'data' / 'comsol_batch' / 'stage4_validation_targetband_v1' / 'stage4_validation_results.csv',

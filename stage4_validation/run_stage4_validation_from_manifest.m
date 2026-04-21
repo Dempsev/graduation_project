@@ -218,15 +218,15 @@ result.point_strategy = string_or_empty(row, 'point_strategy');
 result.family_prior_source = string_or_empty(row, 'family_prior_source');
 result.seed_prior_source = string_or_empty(row, 'seed_prior_source');
 result.b1 = double(row.b1(1));
-result.contact_prob = double(row.contact_prob(1));
-result.positive_prob = double(row.positive_prob(1));
-result.surrogate_pred_gap34_gain_Hz = double(row.surrogate_pred_gap34_gain_Hz(1));
-result.class_score = double(row.class_score(1));
-result.cascade_score = double(row.cascade_score(1));
-result.contact_gate = to_logical(row.contact_gate(1));
-result.positive_gate = to_logical(row.positive_gate(1));
-result.reg_positive_gate = to_logical(row.reg_positive_gate(1));
-result.cascade_gate = to_logical(row.cascade_gate(1));
+result.contact_prob = numeric_or_default_from_field(row, 'contact_prob', NaN);
+result.positive_prob = numeric_or_default_from_field(row, 'positive_prob', NaN);
+result.surrogate_pred_gap34_gain_Hz = numeric_or_default_from_field(row, 'surrogate_pred_gap34_gain_Hz', NaN);
+result.class_score = numeric_or_default_from_field(row, 'class_score', NaN);
+result.cascade_score = numeric_or_default_from_field(row, 'cascade_score', NaN);
+result.contact_gate = to_logical_or_default(row, 'contact_gate', false);
+result.positive_gate = to_logical_or_default(row, 'positive_gate', false);
+result.reg_positive_gate = to_logical_or_default(row, 'reg_positive_gate', false);
+result.cascade_gate = to_logical_or_default(row, 'cascade_gate', false);
 end
 
 function value = to_logical(raw)
@@ -248,6 +248,14 @@ else
 end
 end
 
+function value = to_logical_or_default(row, fieldName, defaultValue)
+if ismember(fieldName, row.Properties.VariableNames)
+    value = to_logical(row.(fieldName)(1));
+else
+    value = defaultValue;
+end
+end
+
 function value = numeric_or_nan(raw)
 value = str2double(string(raw));
 if isempty(value) || isnan(value)
@@ -260,6 +268,17 @@ if ismember(fieldName, row.Properties.VariableNames)
     value = numeric_or_nan(row.(fieldName)(1));
 else
     value = NaN;
+end
+end
+
+function value = numeric_or_default_from_field(row, fieldName, defaultValue)
+if ismember(fieldName, row.Properties.VariableNames)
+    value = numeric_or_nan(row.(fieldName)(1));
+    if isnan(value)
+        value = defaultValue;
+    end
+else
+    value = defaultValue;
 end
 end
 

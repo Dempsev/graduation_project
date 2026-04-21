@@ -72,16 +72,20 @@ In Phase 1, this route should be treated as the current **real optimization stro
 
 ### 3. Target-Band-Conditioned Optimization Planned Mainline
 
-This route is the planned next-step optimization direction after the Phase-1 cleanup.
+This route is now the active thesis-facing inverse-design direction inside the frozen target-band mainline.
 
 Its intended role is:
 
 - use target-band conditional prediction as the front-end objective layer
 - optimize for desired band opening / overlap / coverage
-- become the next thesis-facing optimization mainline
+- serve as the current thesis-facing optimization mainline within the thesis band catalog
 
-In this round, it is promoted in the architecture and documentation, but not yet
-rolled out as the default implemented mainline.
+The current frozen stack uses:
+
+- RF for open / shortlist screening
+- HGB for cover-ratio ranking
+- band-aware shape pools from `data/analysis/targetband_shape_atlas_v1/`
+- real exploratory refinement / search under COMSOL validation
 
 An initial executable prototype now exists for the local-refinement part:
 
@@ -89,11 +93,12 @@ An initial executable prototype now exists for the local-refinement part:
 - `optimization/seed_ranking/run_targetband_local_ga_v1.py`
 - `optimization/seed_ranking/build_targetband_ga_validation_manifest_v1.py`
 
-This should still be read as an **early target-band route**:
+This route should now be read as:
 
-- useful for proving the conditional-optimization idea
-- not yet the final real-validation mainline
-- still downstream of the stronger `true global real GA` baseline
+- the active inverse-design mainline inside the thesis band catalog
+- still bounded in scope
+- still requiring baseline comparisons against `true global real GA`
+- not a claim of arbitrary continuous-band universal optimization
 
 ## What Seed Means After Phase 1
 

@@ -1,12 +1,13 @@
 {
   "catalog_name": "thesis_band_catalog_v2",
-  "training_dataset_tag": "windows_dense_v5_gapdiversity_aug_v1",
-  "training_role": "dense parametric training grid with gap-diversity augmentation",
+  "training_dataset_tag": "windows_dense_v8_truth_plus_exploratory_aug_v1",
+  "training_role": "dense parametric training grid with harvested truth assets and exploratory weak-band augmentation",
   "serving_role": "thesis-facing inverse-design target windows",
   "notes": [
     "This catalog fixes a finite engineering-facing set of target bands instead of claiming arbitrary continuous-band extrapolation.",
     "The current strategy is to densify truth coverage within this catalog and evaluate conditional prediction plus inverse design inside the catalog.",
-    "Bands above 180 Hz remain the main supplementation focus because they are harder and were historically under-covered."
+    "Bands above 180 Hz remain the main supplementation focus because they are harder and were historically under-covered.",
+    "As of the current frozen mainline, this catalog is paired with the v8 target-band dataset, RF classifier, HGB regressor, and the band-aware shape front-end."
   ],
   "bands": [
     {

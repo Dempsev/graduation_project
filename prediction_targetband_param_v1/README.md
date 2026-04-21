@@ -18,6 +18,16 @@ This version is still constrained to the currently validated windows rather than
 
 ## Current Status
 
+This line is no longer only an exploratory branch.
+
+For the current thesis-facing mainline, the frozen default deployment is now:
+
+- thesis band catalog: `prediction_targetband_param_v1/configs/thesis_band_catalog_v2.json`
+- default dataset: `windows_dense_v8_truth_plus_exploratory_aug_v1`
+- classifier: RF
+- regressor: HGB
+- shape front-end: `data/analysis/targetband_shape_atlas_v1`
+
 The line now supports a multi-scale window stack, including both:
 
 - multiple center frequencies
@@ -49,3 +59,10 @@ In practice this means:
 1. train the conditional model on a richer dense grid
 2. evaluate and package a smaller curated set of application-facing windows
 3. report curated-band scores to users instead of the full internal training grid
+
+## Current Freeze Reference
+
+The current thesis-facing freeze is documented in:
+
+- `docs/architecture/targetband_mainline_freeze_v1.md`
+- `prediction_targetband_param_v1/configs/targetband_mainline_freeze_v1.json`
