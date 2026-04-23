@@ -1,15 +1,21 @@
 ﻿from __future__ import annotations
 
+"""Legacy baseline bridge for GA-guided stage4 validation under the gap34 line."""
+
 import argparse
 from pathlib import Path
+import sys
 from typing import Dict, List
 
 import pandas as pd
 
+ROOT = Path(__file__).resolve().parents[1]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+
 from policy_resolution import load_policy_json, resolve_policy_settings
 from ml_common import DEFAULT_OUT_ROOT, save_json
-
-ROOT = Path(__file__).resolve().parents[1]
+from shared.io.stage4_validation_manifest import write_stage4_validation_manifest_csv
 DEFAULT_GA_CSV = DEFAULT_OUT_ROOT / 'candidate_pool_seed_discovery_v10' / 'ga_parametric_search_v1' / 'ga_candidate_manifest_v1.csv'
 DEFAULT_OUT_DIR = DEFAULT_OUT_ROOT / 'candidate_pool_seed_discovery_v10' / 'ga_parametric_search_v1' / 'validation_manifest_v1'
 DEFAULT_POLICY_JSON = ROOT / 'stage3_training' / 'policies' / 'ga_v1.json'
@@ -83,7 +89,7 @@ if __name__ == '__main__':
 
     manifest_path = Path(config['out_dir']) / 'ga_validation_manifest_v1.csv'
     summary_path = Path(config['out_dir']) / 'ga_validation_manifest_summary.json'
-    selected.to_csv(manifest_path, index=False, encoding='utf-8-sig')
+    write_stage4_validation_manifest_csv(selected, manifest_path)
     save_json(summary_path, {
         'policy_json': str(args.policy_json) if args.policy_json else '',
         'ga_csv': str(config['ga_csv']),

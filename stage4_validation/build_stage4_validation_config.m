@@ -1,5 +1,5 @@
 ﻿function cfg = build_stage4_validation_config(validationId, validationDir, manifestCsvName, summaryJsonName, outDir)
-%BUILD_STAGE4_VALIDATION_CONFIG Shared builder for mainline stage4 validation configs.
+%BUILD_STAGE4_VALIDATION_CONFIG Shared run-config builder for stage4 validation.
 
 thisDir = fileparts(mfilename('fullpath'));
 rootDir = fileparts(thisDir);
@@ -17,6 +17,7 @@ cfg.bandPlotDir = fullfile(cfg.plotDir, 'band_diagrams');
 cfg.validationDir = validationDir;
 cfg.validationManifestCsv = fullfile(validationDir, manifestCsvName);
 cfg.validationSummaryJson = fullfile(validationDir, summaryJsonName);
+cfg.manifestContractJson = fullfile(rootDir, 'shared', 'contracts', 'stage4_validation_manifest_contract_v1.json');
 
 cfg.pointManifestCsv = fullfile(cfg.outDir, 'stage4_validation_point_manifest.csv');
 cfg.baselineByPointMat = fullfile(cfg.outDir, 'baseline_by_point.mat');

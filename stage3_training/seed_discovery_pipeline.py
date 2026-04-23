@@ -18,6 +18,10 @@ from objective_registry import (
     GENERIC_OBJECTIVE_PREDICTION_COLUMN,
     GENERIC_PREDICTION_COLUMN,
 )
+from shared.io.stage4_validation_manifest import (
+    stage4_manifest_ordered_columns,
+    write_stage4_validation_manifest_csv,
+)
 
 POOL_FIELDS = [
     'sample_id', 'source_stage', 'source_role', 'pool_arm', 'point_strategy', 'family_prior_source', 'seed_prior_source',
@@ -38,23 +42,7 @@ POOL_FIELDS = [
     'is_gap34_positive', 'is_gap34_gain_positive',
 ]
 
-MANIFEST_FIELDS = [
-    'validation_id', 'selection_source', 'selection_label', 'rank_within_source', 'rank_cascade', 'rank_surrogate',
-    'sample_id',
-    'seed_shape_id', 'seed_family', 'seed_step', 'seed_tier', 'seed_source',
-    'shape_step', 'has_seed_context', 'step_num', 'step_offset', 'step_distance', 'step_direction_sign',
-    'step_window', 'is_seed_shape', 'preferred_direction_sign', 'matches_preferred_direction', 'within_directional_window',
-    'selection_priority', 'target_rule', 'preferred_direction', 'directional_offset', 'allowed_offsets',
-    'v5_reference_validation_id', 'v5_reference_gain_Hz',
-    'stage1_reference_sample_id', 'stage1_reference_fourier_id', 'stage1_reference_gap_Hz', 'stage1_reference_gap_gain_Hz',
-    'stage1_reference_contact_length', 'stage1_reference_candidate_tier',
-    'shape_id', 'shape_family', 'shape_role', 'candidate_id', 'main_id', 'point_id',
-    'pool_arm', 'point_strategy', 'family_prior_source', 'seed_prior_source',
-    'a1', 'a2', 'b1', 'b2', 'a3', 'b3', 'a4', 'b4', 'a5', 'b5', 'r0', 'shift', 'neigs',
-    'contact_prob', 'positive_prob', 'surrogate_pred_gap34_gain_Hz', 'class_score', 'cascade_score',
-    'contact_gate', 'positive_gate', 'reg_positive_gate', 'cascade_gate',
-    GENERIC_OBJECTIVE_NAME_COLUMN, GENERIC_OBJECTIVE_PREDICTION_COLUMN, GENERIC_PREDICTION_COLUMN,
-]
+MANIFEST_FIELDS = stage4_manifest_ordered_columns()
 
 POINT_MANIFEST_FIELDS = [
     'candidate_point_id', 'pool_arm', 'pool_role', 'point_strategy', 'family_prior_source', 'seed_prior_source',
@@ -511,7 +499,7 @@ def build_validation_manifest_for_profile(profile: Dict[str, Any], policy: Dict[
 
     extra_fields = [field for field in MANIFEST_FIELDS if field not in {'validation_id', 'selection_source', 'selection_label', 'rank_within_source'}]
     write_csv(ordered_csv, manifest_rows, ['selection_source', 'selection_label', 'rank_within_source', *extra_fields])
-    write_csv(manifest_csv, manifest_rows, MANIFEST_FIELDS)
+    write_stage4_validation_manifest_csv(pd.DataFrame(manifest_rows), manifest_csv)
 
     summary = {
         'profile_name': profile['name'],

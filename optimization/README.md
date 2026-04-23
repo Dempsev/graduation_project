@@ -2,155 +2,76 @@
 
 This directory is the task-oriented entry layer for the **search layer** of the project.
 
-Phase 1 changes the optimization story in one important way:
+## Official Thesis Mainline
 
-- `seed` remains useful
-- but only as a **low-cost candidate-generation and comparison baseline**
-- not as the final optimization mainline
+The official thesis-facing search line is the **frozen target-band prediction-guided
+inverse-design workflow** inside the thesis band catalog.
 
-## Search-Layer Research Question
+Its intended flow is:
 
-Given:
+1. score candidates under a target-band condition
+2. run conservative local refinement around shortlisted seeds
+3. build a real-validation manifest
+4. send shortlisted cases to stage4 / COMSOL validation
 
-- real physical truth from `physics_pipeline/`
-- model guidance from `prediction/`
-- a continuous structural parameter space
+The mainline should now be described as:
 
-find:
+- prediction-guided target-band shortlist generation
+- conservative local refinement
+- real validation under COMSOL
 
-- strong candidates worth real validation
-- better-performing parameter settings under real physical objectives
-- eventually, target-band-conditioned search routes for design-oriented tasks
+not as seed-first gap34 optimization.
 
-## Current Implementation Roots
+## Stable Entrypoints
 
-The task-oriented implementation currently lives in:
+The preferred thesis-facing search entrypoints are:
 
-- `optimization/seed_ranking/`
-- `optimization/real_comsol_ga/`
+- `optimization/runners/run_targetband_seed_scoring_v1.py`
+- `optimization/runners/run_targetband_local_ga_v1.py`
+- `optimization/runners/run_targetband_validation_manifest_v1.py`
+- `optimization/runners/run_canonical_targetband_refinement_v1.py`
+- `runners/run_stage4_validation_targetband_v1.m`
 
-Historical compatibility directories remain available:
+## Baselines And Historical Bridge Lines
 
-- `stage3_optimization/`
-- `stage3_optimization_real_ga/`
-
-## Search-Layer Structure In Phase 1
-
-### 1. Seed Ranking Baseline
-
-Directory:
-
-- `optimization/seed_ranking/`
-
-Role:
-
-- low-cost front-end candidate generation
-- model-assisted ranking
-- conservative local comparison
-- baseline route for comparison and ablation
-
-This layer is still useful, but it should now be read as a **baseline / front-end**
-instead of the final optimization definition.
-
-### 2. True Global Real-GA Baseline
-
-Directory:
-
-- `optimization/real_comsol_ga/`
-
-Role:
-
-- direct COMSOL-in-the-loop global search
-- real objective optimization without surrogate-only drift
-- current strongest real-optimization baseline in the repository
-
-Preferred entry point:
-
-- `optimization/runners/run_global_real_ga_v1.m`
-
-In Phase 1, this route should be treated as the current **real optimization strong baseline**.
-
-### 3. Target-Band-Conditioned Optimization Planned Mainline
-
-This route is now the active thesis-facing inverse-design direction inside the frozen target-band mainline.
-
-Its intended role is:
-
-- use target-band conditional prediction as the front-end objective layer
-- optimize for desired band opening / overlap / coverage
-- serve as the current thesis-facing optimization mainline within the thesis band catalog
-
-The current frozen stack uses:
-
-- RF for open / shortlist screening
-- HGB for cover-ratio ranking
-- band-aware shape pools from `data/analysis/targetband_shape_atlas_v1/`
-- real exploratory refinement / search under COMSOL validation
-
-An initial executable prototype now exists for the local-refinement part:
-
-- `optimization/seed_ranking/run_targetband_seed_scoring_v1.py`
-- `optimization/seed_ranking/run_targetband_local_ga_v1.py`
-- `optimization/seed_ranking/build_targetband_ga_validation_manifest_v1.py`
-
-This route should now be read as:
-
-- the active inverse-design mainline inside the thesis band catalog
-- still bounded in scope
-- still requiring baseline comparisons against `true global real GA`
-- not a claim of arbitrary continuous-band universal optimization
-
-## What Seed Means After Phase 1
-
-`seed` is still kept in the repository because it remains valuable as:
-
-- a low-cost candidate-generation front-end
-- a historical comparison route
-- a baseline for measuring whether later target-band or global-search methods are better
-
-It should **not** be treated as:
-
-- the final optimization thesis mainline
-- the expected winner over true global GA
-
-## Preferred Entry Points
-
-### Baseline / Low-Cost Search
+These routes remain useful, but they are baseline or bridge logic:
 
 - `optimization/runners/run_surrogate_pipeline_v1.py`
-
-### Real Search Baselines
-
 - `optimization/runners/run_real_ga_v1.m`
 - `optimization/runners/run_global_real_ga_v1.m`
 - `optimization/runners/run_a_then_real_ga_v1.m`
 - `optimization/runners/run_band_catalog_real_ga_v1.m`
+- `stage3_training/build_candidate_pool_v10.py`
+- `stage3_training/build_candidate_pool_v11.py`
+- `stage3_training/build_ga_validation_manifest_v1.py`
 
-### Optimization-Oriented Comparison Runs
+Interpret them as:
 
-- `optimization/runners/run_optimization_probe_then_refine_v1.m`
-- `optimization/runners/run_optimization_champion_funnel_v1.m`
-- `optimization/runners/run_optimization_champion_funnel_v2.m`
-- `optimization/runners/run_optimization_champion_funnel_v3.m`
-- `optimization/runners/run_optimization_champion_funnel_v4.m`
+- low-cost baselines
+- historical gap34 comparison lines
+- bridge routes for reproducibility
 
-## Phase-1 Recommendation
+## Config Semantics
 
-The optimization layer should now be read as three distinct routes:
+Use the following boundary when changing optimization behavior:
 
-1. `seed_ranking` as the low-cost baseline
-2. `true global real GA` as the current real-search strong baseline
-3. `target-band-conditioned optimization` as the next planned mainline
+- `profile`:
+  - frozen candidate-construction choices, shape-pool choices, and thesis mainline assumptions
+- `policy`:
+  - ranking rules, quotas, GA limits, whitelist rules, and validation allocation
+- `run config`:
+  - paths, output roots, resume behavior, and per-run execution arguments
 
-That means the old mixed stage3 scoring logic and seed-driven local refinement
-should no longer be described as the final thesis mainline.
+The stage4 validation handoff is now protected by:
 
-## Follow-Up Order
+- `shared/contracts/stage4_validation_manifest_contract_v1.json`
+- `stage4_validation/build_stage4_validation_config.m`
+- `stage4_validation/run_stage4_validation_from_manifest.m`
 
-The default next-step order is fixed as:
+## Practical Positioning
 
-1. architecture cleanup first
-2. target-band execution second
+The optimization layer should now be read as three roles:
 
-So Phase 1 only changes the optimization narrative and recommended reading order.
-It does not rename runners, delete seed code, or rewrite the existing real GA logic.
+1. target-band prediction-guided search as the thesis mainline
+2. band-catalog / real-GA routes as strong baselines
+3. older seed / gap34 routes as baseline or bridge logic

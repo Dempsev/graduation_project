@@ -1,5 +1,5 @@
 ﻿function cfg = get_stage4_validation_config_ga_v1()
-%GET_STAGE4_VALIDATION_CONFIG_GA_V1 Config for GA-guided COMSOL validation runs.
+%GET_STAGE4_VALIDATION_CONFIG_GA_V1 Config for the legacy gap34 GA baseline bridge.
 
 thisDir = fileparts(mfilename('fullpath'));
 rootDir = fileparts(thisDir);

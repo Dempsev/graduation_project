@@ -1,5 +1,7 @@
 ﻿from __future__ import annotations
 
+"""Legacy baseline bridge for the old v10 seed-only candidate-pool line."""
+
 from seed_discovery_pipeline import build_candidate_pool_for_profile
 from seed_discovery_profiles import get_profile
 

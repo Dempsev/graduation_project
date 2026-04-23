@@ -13,6 +13,7 @@ if ~isfile(cfg.validationManifestCsv)
 end
 
 manifestTable = readtable(cfg.validationManifestCsv);
+validate_stage4_validation_manifest_contract_v1(manifestTable, cfg.validationManifestCsv, cfg.manifestContractJson);
 manifestTable = normalize_manifest_table(manifestTable);
 manifestEndIndex = resolve_end_index(height(manifestTable), startIndex, maxCount);
 activeManifest = manifestTable(startIndex:manifestEndIndex, :);

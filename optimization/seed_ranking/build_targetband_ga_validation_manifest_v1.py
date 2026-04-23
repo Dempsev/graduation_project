@@ -2,15 +2,19 @@ from __future__ import annotations
 
 import argparse
 from pathlib import Path
+import sys
 from typing import Dict, List
 
 import pandas as pd
 
 ROOT = Path(__file__).resolve().parents[2]
+if str(ROOT) not in sys.path:
+    sys.path.insert(0, str(ROOT))
+from shared.io.stage4_validation_manifest import write_stage4_validation_manifest_csv
 
 
-DEFAULT_GA_CSV = ROOT / 'data' / 'ml_runs' / 'targetband_local_ga_v1' / 'band180_220_center_probe' / 'targetband_ga_candidate_manifest_v1.csv'
-DEFAULT_OUT_DIR = ROOT / 'data' / 'ml_runs' / 'targetband_local_ga_v1' / 'band180_220_center_probe' / 'validation_manifest_v1'
+DEFAULT_GA_CSV = ROOT / 'data' / 'ml_runs' / 'targetband_local_ga_v1' / 'band180_220' / 'targetband_ga_candidate_manifest_v1.csv'
+DEFAULT_OUT_DIR = ROOT / 'data' / 'ml_runs' / 'targetband_local_ga_v1' / 'band180_220' / 'validation_manifest_v1'
 
 
 def parse_args() -> argparse.Namespace:
@@ -95,7 +99,7 @@ def main() -> None:
 
     manifest_path = out_dir / 'targetband_ga_validation_manifest_v1.csv'
     summary_path = out_dir / 'targetband_ga_validation_manifest_summary.json'
-    selected.to_csv(manifest_path, index=False, encoding='utf-8-sig')
+    write_stage4_validation_manifest_csv(selected, manifest_path)
 
     summary = {
         'ga_csv': str(ga_csv),

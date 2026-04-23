@@ -1,5 +1,7 @@
 ﻿from __future__ import annotations
 
+"""Legacy baseline bridge for the old v11 stage4 validation manifest line."""
+
 import argparse
 from pathlib import Path
 
