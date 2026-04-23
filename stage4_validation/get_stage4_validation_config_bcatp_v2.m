@@ -1,0 +1,16 @@
+function cfg = get_stage4_validation_config_bcatp_v2()
+%GET_STAGE4_VALIDATION_CONFIG_BCATP_V2
+% Frozen bilobe-only contact-aware target-band pilot validation config.
+
+thisDir = fileparts(mfilename('fullpath'));
+rootDir = fileparts(thisDir);
+validationDir = fullfile(rootDir, 'data', 'ml_runs', 'bilobe_contact_aware_targetband_pilot_v2', 'validation_manifest_v1');
+outDir = fullfile(rootDir, 'data', 'comsol_batch', 'stage4_validation_bilobe_contact_aware_targetband_pilot_v2');
+cfg = build_stage4_validation_config( ...
+    'stage4_validation_bilobe_contact_aware_targetband_pilot_v2', ...
+    validationDir, ...
+    'bilobe_contact_aware_targetband_manifest_v2.csv', ...
+    'bilobe_contact_aware_targetband_manifest_summary_v2.json', ...
+    outDir);
+cfg.shapeDir = fullfile(rootDir, 'data', 'snake_based_bilobe_contact_aware_pilot_v2', 'frozen_shape_contours');
+end

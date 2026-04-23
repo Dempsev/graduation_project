@@ -1,0 +1,16 @@
+function cfg = get_stage4_validation_config_sbatp_missing_v1()
+%GET_STAGE4_VALIDATION_CONFIG_SBATP_MISSING_V1
+% Missing-only patch config for snake-based archetype target-band pilot validation.
+
+thisDir = fileparts(mfilename('fullpath'));
+rootDir = fileparts(thisDir);
+validationDir = fullfile(rootDir, 'data', 'ml_runs', 'snake_based_archetype_targetband_missing_patch_v1', 'validation_manifest_v1');
+outDir = fullfile(rootDir, 'data', 'comsol_batch', 'stage4_validation_snake_based_archetype_targetband_missing_patch_v1');
+cfg = build_stage4_validation_config( ...
+    'stage4_validation_snake_based_archetype_targetband_missing_patch_v1', ...
+    validationDir, ...
+    'snake_based_archetype_targetband_missing_manifest_v1.csv', ...
+    'snake_based_archetype_targetband_missing_manifest_summary_v1.json', ...
+    outDir);
+cfg.shapeDir = fullfile(rootDir, 'data', 'snake_based_archetype_expansion_pilot_v1', 'shape_contours');
+end

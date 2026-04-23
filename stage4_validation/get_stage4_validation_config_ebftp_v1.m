@@ -1,0 +1,16 @@
+function cfg = get_stage4_validation_config_ebftp_v1()
+%GET_STAGE4_VALIDATION_CONFIG_EBFTP_V1
+% ep17 bilobe family target-band probe v1.
+
+thisDir = fileparts(mfilename('fullpath'));
+rootDir = fileparts(thisDir);
+validationDir = fullfile(rootDir, 'data', 'ml_runs', 'ep17_bilobe_family_targetband_probe_v1', 'validation_manifest_v1');
+outDir = fullfile(rootDir, 'data', 'comsol_batch', 'stage4_validation_ep17_bilobe_family_targetband_probe_v1');
+cfg = build_stage4_validation_config( ...
+    'stage4_validation_ep17_bilobe_family_targetband_probe_v1', ...
+    validationDir, ...
+    'ep17_bilobe_family_targetband_manifest_v1.csv', ...
+    'ep17_bilobe_family_targetband_manifest_summary_v1.json', ...
+    outDir);
+cfg.shapeDir = fullfile(rootDir, 'data', 'snake_based_bilobe_contact_aware_pilot_v2', 'frozen_shape_contours');
+end

@@ -1,0 +1,16 @@
+function cfg = get_stage4_validation_config_bcatp_v1()
+%GET_STAGE4_VALIDATION_CONFIG_BCATP_V1
+% Short-name entry for bilobe-only contact-aware target-band pilot validation.
+
+thisDir = fileparts(mfilename('fullpath'));
+rootDir = fileparts(thisDir);
+validationDir = fullfile(rootDir, 'data', 'ml_runs', 'bilobe_contact_aware_targetband_pilot_v1', 'validation_manifest_v1');
+outDir = fullfile(rootDir, 'data', 'comsol_batch', 'stage4_validation_bilobe_contact_aware_targetband_pilot_v1');
+cfg = build_stage4_validation_config( ...
+    'stage4_validation_bilobe_contact_aware_targetband_pilot_v1', ...
+    validationDir, ...
+    'bilobe_contact_aware_targetband_manifest_v1.csv', ...
+    'bilobe_contact_aware_targetband_manifest_summary_v1.json', ...
+    outDir);
+cfg.shapeDir = fullfile(rootDir, 'data', 'snake_based_archetype_expansion_pilot_v1', 'shape_contours');
+end
