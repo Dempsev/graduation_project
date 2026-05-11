@@ -24,10 +24,6 @@ The repository is read through a thesis-facing three-layer architecture:
 The repository now treats the **frozen target-band stack** as the single
 thesis-facing mainline.
 
-The current thesis-facing branch is `codex/research-architecture-refactor`.
-The older `main` branch should be treated as the historical default branch
-until this line is merged into `main` or selected as the GitHub default branch.
-
 That mainline is:
 
 - truth production through the historical physics pipeline
@@ -127,11 +123,10 @@ Typical environment used by this project:
 
 ## Commit And Data Policy
 
-This repository tracks **source code and documentation**, not generated research outputs.
+This repository tracks the workflow definition, not generated research outputs.
 
 - All generated tables, manifests, model checkpoints, COMSOL outputs, plots, and logs live under `data/`.
 - `data/` is git-ignored on purpose.
-- Commit workflow definitions, configuration, source code, and thesis-facing documentation.
 - Do not commit generated artifacts from `data/`, `output/`, `tmp/`, or `.worktrees/`.
 
 ## What This Repository Is Good For
