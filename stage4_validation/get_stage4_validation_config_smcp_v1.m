@@ -1,0 +1,16 @@
+function cfg = get_stage4_validation_config_smcp_v1()
+%GET_STAGE4_VALIDATION_CONFIG_SMCP_V1
+% Short-name entry for shape mechanism combo pilot validation.
+
+thisDir = fileparts(mfilename('fullpath'));
+rootDir = fileparts(thisDir);
+validationDir = fullfile(rootDir, 'data', 'ml_runs', 'shape_mechanism_combo_pilot_v1', 'validation_manifest_v1');
+outDir = fullfile(rootDir, 'data', 'comsol_batch', 'stage4_validation_shape_mechanism_combo_pilot_v1');
+cfg = build_stage4_validation_config( ...
+    'stage4_validation_shape_mechanism_combo_pilot_v1', ...
+    validationDir, ...
+    'shape_mechanism_combo_manifest_v1.csv', ...
+    'shape_mechanism_combo_manifest_summary_v1.json', ...
+    outDir);
+cfg.shapeDir = fullfile(rootDir, 'data', 'shape_mechanism_combo_pilot_v1', 'shape_contours');
+end

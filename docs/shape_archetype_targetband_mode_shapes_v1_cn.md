@@ -6,7 +6,7 @@
 
 ## 当前选中的 case
 
-1. `band240_280__bilobe__ep195`
+1. `band220_260__bilobe__ep195`
    - `shape_id = pbi195_step36_contour_xy`
    - best cover = `1.000`
    - gap pair = `1-2`
@@ -37,6 +37,7 @@ run('d:/graduation_project/coad/runners/run_export_shape_archetype_targetband_mo
 导出结果会写到：
 
 - `data/analysis/shape_archetype_targetband_mode_shapes_v1/`
+- `output/thesis_charts/chapter6/physical_mechanism/shape_archetype_targetband_mode_shapes_v1/`
 
 并生成：
 

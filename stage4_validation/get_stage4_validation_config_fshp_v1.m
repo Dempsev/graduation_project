@@ -1,0 +1,16 @@
+function cfg = get_stage4_validation_config_fshp_v1()
+%GET_STAGE4_VALIDATION_CONFIG_FSHP_V1
+% Short-name entry for feature-stratified high-frequency pilot validation.
+
+thisDir = fileparts(mfilename('fullpath'));
+rootDir = fileparts(thisDir);
+validationDir = fullfile(rootDir, 'data', 'ml_runs', 'feature_stratified_highfreq_pilot_v1', 'validation_manifest_v1');
+outDir = fullfile(rootDir, 'data', 'comsol_batch', 'stage4_validation_feature_stratified_highfreq_pilot_v1');
+cfg = build_stage4_validation_config( ...
+    'stage4_validation_feature_stratified_highfreq_pilot_v1', ...
+    validationDir, ...
+    'feature_stratified_highfreq_manifest_v1.csv', ...
+    'feature_stratified_highfreq_manifest_summary_v1.json', ...
+    outDir);
+cfg.shapeDir = fullfile(rootDir, 'data', 'feature_stratified_highfreq_pilot_v1', 'shape_contours');
+end

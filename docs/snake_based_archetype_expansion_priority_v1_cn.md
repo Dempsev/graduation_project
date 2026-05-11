@@ -15,7 +15,7 @@
 基于 hand-made pilot 的 target-band 结果和 mode-shape 图：
 
 1. `bilobe / 偏心质量分布` 最像真正引发了不同带边机制。
-   - `band240_280__bilobe__ep195` 在 `1-2` gap pair 上打出了完整覆盖；
+   - `band220_260__bilobe__ep195` 在 `1-2` gap pair 上打出了完整覆盖；
    - lower / upper mode shape 的空间组织差异最大；
    - 这是目前最强的新机制证据。
 

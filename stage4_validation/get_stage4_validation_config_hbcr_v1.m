@@ -1,0 +1,16 @@
+function cfg = get_stage4_validation_config_hbcr_v1()
+%GET_STAGE4_VALIDATION_CONFIG_HBCR_V1
+% Short-name entry for corrected high-band rescue validation.
+
+thisDir = fileparts(mfilename('fullpath'));
+rootDir = fileparts(thisDir);
+validationDir = fullfile(rootDir, 'data', 'ml_runs', 'highband_corrected_rescue_v1', 'validation_manifest_v1');
+outDir = fullfile(rootDir, 'data', 'comsol_batch', 'stage4_validation_highband_corrected_rescue_v1');
+cfg = build_stage4_validation_config( ...
+    'stage4_validation_highband_corrected_rescue_v1', ...
+    validationDir, ...
+    'highband_corrected_rescue_manifest_v1.csv', ...
+    'highband_corrected_rescue_manifest_summary_v1.json', ...
+    outDir);
+cfg.shapeDir = fullfile(rootDir, 'data', 'highband_corrected_rescue_v1', 'shape_contours');
+end

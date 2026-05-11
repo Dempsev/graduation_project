@@ -16,8 +16,8 @@ if str(ROOT) not in sys.path:
 from postprocess.tbl1_post_utils import load_tbl1_data
 
 
-MERGED_CSV = ROOT / "data" / "analysis" / "bilobe_contact_aware_targetband_pilot_v2" / "snake_based_archetype_targetband_pilot_merged_v1.csv"
-TBL1_DIR = ROOT / "data" / "comsol_batch" / "stage4_validation_bilobe_contact_aware_targetband_pilot_v2" / "tbl1_exports"
+RESULTS_CSV = ROOT / "data" / "comsol_batch" / "stage4_validation_ep17_bilobe_family_targetband_probe_v1" / "stage4_validation_results.csv"
+TBL1_DIR = ROOT / "data" / "comsol_batch" / "stage4_validation_ep17_bilobe_family_targetband_probe_v1" / "tbl1_exports"
 OUT_DIR = ROOT / "data" / "analysis" / "ep17_bilobe_witness_case_v1" / "dispersion"
 TARGET_BANDS = ["band200_240", "band220_260", "band240_280"]
 TARGET_FILL_COLOR = "#e9c46a"
@@ -33,7 +33,7 @@ TITLE_MAP = {
 
 def parse_args() -> argparse.Namespace:
     parser = argparse.ArgumentParser(description="Plot dispersion witness panels for ep17_step156 bilobe case.")
-    parser.add_argument("--merged-csv", type=Path, default=MERGED_CSV)
+    parser.add_argument("--results-csv", type=Path, default=RESULTS_CSV)
     parser.add_argument("--tbl1-dir", type=Path, default=TBL1_DIR)
     parser.add_argument("--out-dir", type=Path, default=OUT_DIR)
     parser.add_argument("--dpi", type=int, default=240)
@@ -57,14 +57,13 @@ def split_band_groups(sub: pd.DataFrame, target_low: float, target_high: float) 
     return highlight_groups, background_groups
 
 
-def sample_id_for_band(merged: pd.DataFrame, band_tag: str) -> str:
-    sub = merged[
-        (merged["shape_id"].astype(str) == "ep17_step156_contour_xy")
-        & (merged["target_band_tag"].astype(str) == band_tag)
-    ].copy()
+def row_for_band(results: pd.DataFrame, band_tag: str) -> pd.Series:
+    target_validation_id = f"{band_tag}__ep17_step156_contour_xy__center"
+    mask = results["validation_id"].astype(str).eq(target_validation_id)
+    sub = results.loc[mask].copy()
     if sub.empty:
-        raise ValueError(f"missing merged row for {band_tag}")
-    return str(sub["sample_id"].iloc[0])
+        raise ValueError(f"missing results row for {band_tag}")
+    return sub.iloc[0]
 
 
 def plot_panel(ax: plt.Axes, tbl1_csv: Path, band_tag: str, target_low: float, target_high: float) -> tuple[float, float]:
@@ -98,34 +97,33 @@ def plot_panel(ax: plt.Axes, tbl1_csv: Path, band_tag: str, target_low: float, t
 
 def main() -> None:
     args = parse_args()
-    merged_csv = args.merged_csv.resolve()
+    results_csv = args.results_csv.resolve()
     tbl1_dir = args.tbl1_dir.resolve()
     out_dir = args.out_dir.resolve()
     out_dir.mkdir(parents=True, exist_ok=True)
 
-    merged = pd.read_csv(merged_csv)
+    results = pd.read_csv(results_csv)
     fig, axes = plt.subplots(1, 3, figsize=(15.2, 5.0), sharey=True)
     freq_bounds: list[float] = []
     panel_info: list[dict[str, object]] = []
 
     for ax, band_tag in zip(axes, TARGET_BANDS):
         band_low, band_high = [float(x) for x in band_tag.replace("band", "").split("_")]
-        sample_id = sample_id_for_band(merged, band_tag)
+        row = row_for_band(results, band_tag)
+        sample_id = str(row["sample_id"])
         tbl1_csv = tbl1_dir / f"{sample_id}_tbl1.csv"
         local_min, local_max = plot_panel(ax, tbl1_csv, band_tag, band_low, band_high)
         freq_bounds.extend([local_min, local_max, band_low, band_high])
-        row = merged[
-            (merged["shape_id"].astype(str) == "ep17_step156_contour_xy")
-            & (merged["target_band_tag"].astype(str) == band_tag)
-        ].iloc[0]
         panel_info.append(
             {
                 "band_tag": band_tag,
                 "sample_id": sample_id,
                 "tbl1_csv": str(tbl1_csv),
-                "target_gap_cover_ratio": float(pd.to_numeric(row["target_gap_cover_ratio"], errors="coerce")),
-                "target_gap_overlap_Hz": float(pd.to_numeric(row["target_gap_overlap_Hz"], errors="coerce")),
-                "actual_role": str(row["actual_role"]),
+                "validation_id": str(row["validation_id"]),
+                "gap34_Hz": float(pd.to_numeric(row["gap34_Hz"], errors="coerce")),
+                "gap34_gain_Hz": float(pd.to_numeric(row["gap34_gain_Hz"], errors="coerce")),
+                "geometry_valid": int(pd.to_numeric(row["geometry_valid"], errors="coerce") or 0),
+                "contact_valid": int(pd.to_numeric(row["contact_valid"], errors="coerce") or 0),
             }
         )
 
@@ -141,7 +139,7 @@ def main() -> None:
     plt.close(fig)
 
     summary = {
-        "merged_csv": str(merged_csv),
+        "results_csv": str(results_csv),
         "tbl1_dir": str(tbl1_dir),
         "out_dir": str(out_dir),
         "plot_path": str(out_path),

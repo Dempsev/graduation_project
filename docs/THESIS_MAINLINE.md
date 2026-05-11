@@ -43,6 +43,7 @@ Use this set as the fixed thesis-facing entrypoint set:
 - `optimization/runners/run_targetband_seed_scoring_v1.py`
 - `optimization/runners/run_targetband_local_ga_v1.py`
 - `optimization/runners/run_targetband_validation_manifest_v1.py`
+- `runners/run_stage4_validation_targetband_top6_v1.m`
 - `runners/run_stage4_validation_targetband_v1.m`
 - `prediction_targetband_param_v1/runners/run_build_thesis_application_bundle_v1.py`
 
@@ -101,9 +102,17 @@ For thesis-facing reproduction, use this order:
 6. build the real-validation manifest
    - `optimization/runners/run_targetband_validation_manifest_v1.py`
 7. launch stage4 validation
-   - `runners/run_stage4_validation_targetband_v1.m`
+   - `runners/run_stage4_validation_targetband_top6_v1.m`
+   - authoritative chapter-6 output: `data/comsol_batch/stage4_validation_targetband_top6_v1/`
+   - supplementary 4-row refinement batch: `data/comsol_batch/stage4_validation_targetband_v1/`
 8. package thesis-facing application outputs
    - `prediction_targetband_param_v1/runners/run_build_thesis_application_bundle_v1.py`
+
+The chapter-6 Stage4 validation funnel uses `stage4_validation_targetband_top6_v1`.
+That batch contains 6 submitted candidates, 6 geometry-valid candidates, 5
+contact-valid and solved candidates, and 5 positive `gap34` gains. Do not use
+the smaller `stage4_validation_targetband_v1` batch as the source for the
+top-6 funnel.
 
 ## Output Layering
 

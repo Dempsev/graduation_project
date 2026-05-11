@@ -13,23 +13,23 @@ addpath(genpath(fullfile(rootDir, 'stage2_harmonics')));
 addpath(genpath(fullfile(rootDir, 'stage2_harmonics_refine')));
 addpath(genpath(fullfile(rootDir, 'stage4_validation')));
 
-cfg = get_stage4_validation_config_bcatp_v2();
-mergedCsv = fullfile(rootDir, 'data', 'analysis', 'bilobe_contact_aware_targetband_pilot_v2', ...
-    'snake_based_archetype_targetband_pilot_merged_v1.csv');
+cfg = get_stage4_validation_config_sbatp_v1();
+resultsCsv = fullfile(rootDir, 'data', 'comsol_batch', 'stage4_validation_ep17_bilobe_family_targetband_probe_v1', ...
+    'stage4_validation_results.csv');
 outDir = fullfile(rootDir, 'data', 'analysis', 'ep17_bilobe_witness_case_v1', 'mode_shapes');
 ensure_dir_local(outDir);
 
-if ~isfile(mergedCsv)
+if ~isfile(resultsCsv)
     error('export_ep17_bilobe_witness_mode_shapes_v1:MissingMergedCsv', ...
-        'Merged csv not found: %s', mergedCsv);
+        'Results csv not found: %s', resultsCsv);
 end
 
-rows = readtable(mergedCsv);
-targetSampleId = "stage4_validation_bilobe_contact_aware_targetband_pilot_v2_band220_260_ep17_step156_contour_xy_center";
+rows = readtable(resultsCsv);
+targetSampleId = "stage4_validation_ep17_bilobe_family_targetband_probe_v1_band220_260_ep17_step156_contour_xy_center";
 rows = rows(strcmp(string(rows.sample_id), targetSampleId), :);
 if isempty(rows)
     error('export_ep17_bilobe_witness_mode_shapes_v1:MissingRow', ...
-        'Witness sample row not found in %s', mergedCsv);
+        'Witness sample row not found in %s', resultsCsv);
 end
 
 row = rows(1, :);
@@ -72,11 +72,8 @@ try
             'tbl1 export missing: %s', tbl1Path);
     end
 
-    lowerBand = round(double(pick_numeric(row, {'target_gap_lower_band'})));
-    if ~isfinite(lowerBand) || lowerBand < 1
-        error('export_ep17_bilobe_witness_mode_shapes_v1:MissingBandPair', ...
-            'target_gap_lower_band missing for witness case');
-    end
+    [targetLowHz, targetHighHz] = parse_band_tag_from_validation_id(string(row.validation_id(1)));
+    lowerBand = locate_target_gap_band_index_from_tbl1(tbl1Path, targetLowHz, targetHighHz);
 
     selectors = locate_gap_edge_selectors_from_tbl1(tbl1Path, lowerBand);
     lowerOut = fullfile(outDir, [sampleId '_lower_edge.png']);
@@ -112,6 +109,16 @@ finally
     catch
     end
 end
+end
+
+function [targetLowHz, targetHighHz] = parse_band_tag_from_validation_id(validationId)
+tokens = regexp(char(validationId), 'band(\d+)_(\d+)', 'tokens', 'once');
+if isempty(tokens)
+    error('parse_band_tag_from_validation_id:InvalidValidationId', ...
+        'Could not parse target band from validation id: %s', char(validationId));
+end
+targetLowHz = str2double(tokens{1});
+targetHighHz = str2double(tokens{2});
 end
 
 function pointSpec = build_point_spec_from_row(row)
@@ -156,6 +163,63 @@ for i = 1:numel(fieldNames)
         return;
     end
 end
+end
+
+function lowerBandIndex = locate_target_gap_band_index_from_tbl1(tbl1Path, targetLowHz, targetHighHz)
+[kVals, freqVals] = read_tbl1_numeric(tbl1Path);
+if isempty(kVals)
+    error('locate_target_gap_band_index_from_tbl1:EmptyData', 'No numeric rows in %s', tbl1Path);
+end
+
+[uniqueK, ~, kIdx] = unique(kVals, 'stable');
+bandsByK = cell(numel(uniqueK), 1);
+maxBands = 0;
+for i = 1:numel(uniqueK)
+    freq = sort(freqVals(kIdx == i), 'ascend');
+    bandsByK{i} = freq(:);
+    maxBands = max(maxBands, numel(freq));
+end
+if maxBands < 2
+    error('locate_target_gap_band_index_from_tbl1:TooFewBands', 'Need at least two bands in %s', tbl1Path);
+end
+
+bandMatrix = nan(numel(uniqueK), maxBands);
+for i = 1:numel(uniqueK)
+    freq = bandsByK{i};
+    bandMatrix(i, 1:numel(freq)) = freq;
+end
+
+bestOverlap = -inf;
+bestWidth = -inf;
+bestLowerBand = NaN;
+
+for bandIdx = 1:(maxBands - 1)
+    lowerBand = bandMatrix(:, bandIdx);
+    upperBand = bandMatrix(:, bandIdx + 1);
+    if ~any(isfinite(lowerBand)) || ~any(isfinite(upperBand))
+        continue;
+    end
+
+    lowerEdge = max(lowerBand(isfinite(lowerBand)));
+    upperEdge = min(upperBand(isfinite(upperBand)));
+    gapWidth = upperEdge - lowerEdge;
+    if gapWidth <= 0
+        continue;
+    end
+
+    overlap = max(0.0, min(upperEdge, targetHighHz) - max(lowerEdge, targetLowHz));
+    if overlap > bestOverlap + 1e-12 || (abs(overlap - bestOverlap) <= 1e-12 && gapWidth > bestWidth)
+        bestOverlap = overlap;
+        bestWidth = gapWidth;
+        bestLowerBand = bandIdx;
+    end
+end
+
+if ~isfinite(bestLowerBand)
+    error('locate_target_gap_band_index_from_tbl1:NoOverlap', ...
+        'Could not determine target gap index from %s for band %.1f-%.1f', tbl1Path, targetLowHz, targetHighHz);
+end
+lowerBandIndex = round(bestLowerBand);
 end
 
 function selectors = locate_gap_edge_selectors_from_tbl1(tbl1Path, lowerBandIndex)

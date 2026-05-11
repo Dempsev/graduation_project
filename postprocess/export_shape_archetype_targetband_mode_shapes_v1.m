@@ -24,7 +24,7 @@ end
 
 rows = readtable(mergedCsv);
 selectedIds = [ ...
-    "stage4_validation_shape_archetype_targetband_pilot_v1_band240_280_pbi195_center"; ...
+    "stage4_validation_shape_archetype_targetband_pilot_v1_band220_260_pbi195_center"; ...
     "stage4_validation_shape_archetype_targetband_pilot_v1_band240_280_pas130_center"; ...
     "stage4_validation_shape_archetype_targetband_pilot_v1_band240_280_pne253_center" ...
 ];
@@ -83,8 +83,7 @@ for i = 1:height(rows)
 
         lowerBand = round(double(pick_numeric(row, {'target_gap_lower_band'})));
         if ~isfinite(lowerBand) || lowerBand < 1
-            error('export_shape_archetype_targetband_mode_shapes_v1:MissingBandPair', ...
-                'target_gap_lower_band missing for %s', caseLabel);
+            lowerBand = infer_lower_band_from_row(row, tbl1Path);
         end
         selectors = locate_gap_edge_selectors_from_tbl1(tbl1Path, lowerBand);
 
@@ -231,6 +230,93 @@ selectors.upper = struct( ...
     'band_index', double(lowerBandIndex + 1), ...
     'freq_value', double(upperEdgeFreq) ...
 );
+end
+
+function lowerBand = infer_lower_band_from_row(row, tbl1Path)
+if ismember('validation_id', row.Properties.VariableNames)
+    try
+        [targetLowHz, targetHighHz] = parse_band_tag_from_validation_id(string(row.validation_id(1)));
+        lowerBand = locate_target_gap_band_index_from_tbl1(tbl1Path, targetLowHz, targetHighHz);
+        return;
+    catch
+    end
+end
+if ismember('target_band_tag', row.Properties.VariableNames)
+    tag = char(string(row.target_band_tag(1)));
+    tokens = regexp(tag, 'band(\d+)_(\d+)', 'tokens', 'once');
+    if ~isempty(tokens)
+        targetLowHz = str2double(tokens{1});
+        targetHighHz = str2double(tokens{2});
+        lowerBand = locate_target_gap_band_index_from_tbl1(tbl1Path, targetLowHz, targetHighHz);
+        return;
+    end
+end
+error('infer_lower_band_from_row:NoBandInfo', ...
+    'Could not infer target gap band from %s', char(string(row.sample_id(1))));
+end
+
+function [targetLowHz, targetHighHz] = parse_band_tag_from_validation_id(validationId)
+tokens = regexp(char(validationId), 'band(\d+)_(\d+)', 'tokens', 'once');
+if isempty(tokens)
+    error('parse_band_tag_from_validation_id:InvalidValidationId', ...
+        'Could not parse target band from validation id: %s', char(validationId));
+end
+targetLowHz = str2double(tokens{1});
+targetHighHz = str2double(tokens{2});
+end
+
+function lowerBandIndex = locate_target_gap_band_index_from_tbl1(tbl1Path, targetLowHz, targetHighHz)
+[kVals, freqVals] = read_tbl1_numeric(tbl1Path);
+if isempty(kVals)
+    error('locate_target_gap_band_index_from_tbl1:EmptyData', 'No numeric rows in %s', tbl1Path);
+end
+
+[uniqueK, ~, kIdx] = unique(kVals, 'stable');
+bandsByK = cell(numel(uniqueK), 1);
+maxBands = 0;
+for i = 1:numel(uniqueK)
+    freq = sort(freqVals(kIdx == i), 'ascend');
+    bandsByK{i} = freq(:);
+    maxBands = max(maxBands, numel(freq));
+end
+if maxBands < 2
+    error('locate_target_gap_band_index_from_tbl1:TooFewBands', 'Need at least two bands in %s', tbl1Path);
+end
+
+bandMatrix = nan(numel(uniqueK), maxBands);
+for i = 1:numel(uniqueK)
+    freq = bandsByK{i};
+    bandMatrix(i, 1:numel(freq)) = freq;
+end
+
+bestOverlap = -inf;
+bestWidth = -inf;
+bestLowerBand = NaN;
+for bandIdx = 1:(maxBands - 1)
+    lowerBand = bandMatrix(:, bandIdx);
+    upperBand = bandMatrix(:, bandIdx + 1);
+    if ~any(isfinite(lowerBand)) || ~any(isfinite(upperBand))
+        continue;
+    end
+    lowerEdge = max(lowerBand(isfinite(lowerBand)));
+    upperEdge = min(upperBand(isfinite(upperBand)));
+    gapWidth = upperEdge - lowerEdge;
+    if gapWidth <= 0
+        continue;
+    end
+    overlap = max(0.0, min(upperEdge, targetHighHz) - max(lowerEdge, targetLowHz));
+    if overlap > bestOverlap + 1e-12 || (abs(overlap - bestOverlap) <= 1e-12 && gapWidth > bestWidth)
+        bestOverlap = overlap;
+        bestWidth = gapWidth;
+        bestLowerBand = bandIdx;
+    end
+end
+
+if ~isfinite(bestLowerBand)
+    error('locate_target_gap_band_index_from_tbl1:NoOverlap', ...
+        'Could not determine target gap index from %s for band %.1f-%.1f', tbl1Path, targetLowHz, targetHighHz);
+end
+lowerBandIndex = round(bestLowerBand);
 end
 
 function export_mode_shape_image(model, selector, outPath, figTitle)

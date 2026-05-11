@@ -84,6 +84,10 @@ Authoritative output:
 
 ## 5. Run Local Target-Band Refinement
 
+The thesis-facing Stage4 evidence uses the diversified center-point top-6
+local-GA batch. Build it explicitly with `--out-dir` so that the validation
+manifest and MATLAB wrapper point at the same artifact family:
+
 ```powershell
 python optimization\runners\run_targetband_local_ga_v1.py `
   --scored-csv data/ml_runs/targetband_seed_scoring_v1/band180_220/targetband_seed_predictions.csv `
@@ -91,30 +95,31 @@ python optimization\runners\run_targetband_local_ga_v1.py `
   --regressor-run-root data/prediction_targetband_param_v1_runs/param_targetband_cover_hgb_dense_v8_cmp_v1/stratified_group_kfold `
   --band-low 180 `
   --band-high 220 `
-  --only-point-id rf09_h00_center
+  --only-point-id rf09_h00_center `
+  --out-dir data/ml_runs/targetband_local_ga_v1/band180_220_center_top6
 ```
 
 Authoritative output root:
 
-- `data/ml_runs/targetband_local_ga_v1/band180_220/`
+- `data/ml_runs/targetband_local_ga_v1/band180_220_center_top6/`
 
 Key artifact:
 
-- `data/ml_runs/targetband_local_ga_v1/band180_220/targetband_ga_candidate_manifest_v1.csv`
+- `data/ml_runs/targetband_local_ga_v1/band180_220_center_top6/targetband_ga_candidate_manifest_v1.csv`
 
 ## 6. Build The Stage4 Validation Manifest
 
 ```powershell
 python optimization\runners\run_targetband_validation_manifest_v1.py `
-  --ga-csv data/ml_runs/targetband_local_ga_v1/band180_220/targetband_ga_candidate_manifest_v1.csv `
-  --out-dir data/ml_runs/targetband_local_ga_v1/band180_220/validation_manifest_v1 `
+  --ga-csv data/ml_runs/targetband_local_ga_v1/band180_220_center_top6/targetband_ga_candidate_manifest_v1.csv `
+  --out-dir data/ml_runs/targetband_local_ga_v1/band180_220_center_top6/validation_manifest_v1 `
   --total-k 6 `
-  --per-shape-k 2
+  --per-shape-k 1
 ```
 
 Authoritative output:
 
-- `data/ml_runs/targetband_local_ga_v1/band180_220/validation_manifest_v1/targetband_ga_validation_manifest_v1.csv`
+- `data/ml_runs/targetband_local_ga_v1/band180_220_center_top6/validation_manifest_v1/targetband_ga_validation_manifest_v1.csv`
 
 This manifest is now checked by the shared contract:
 
@@ -123,12 +128,16 @@ This manifest is now checked by the shared contract:
 ## 7. Launch Real Validation
 
 ```matlab
-run(fullfile(pwd, 'runners', 'run_stage4_validation_targetband_v1.m'));
+run(fullfile(pwd, 'runners', 'run_stage4_validation_targetband_top6_v1.m'));
 ```
 
 Primary output root:
 
-- `data/comsol_batch/stage4_validation_targetband_v1/`
+- `data/comsol_batch/stage4_validation_targetband_top6_v1/`
+
+This is the Stage4 batch used by the chapter-6 validation funnel and detailed
+table: 6 submitted candidates, 6 geometry-valid candidates, 5 contact-valid
+and solved candidates, and 5 positive `gap34` gains.
 
 ## 7A. MATLAB Preflight Only
 
@@ -137,7 +146,7 @@ MATLAB-side loader are consistent before COMSOL work begins:
 
 ```matlab
 manifestPath = fullfile(pwd, 'data', 'ml_runs', 'targetband_local_ga_v1', ...
-    'band180_220', 'validation_manifest_v1', ...
+    'band180_220_center_top6', 'validation_manifest_v1', ...
     'targetband_ga_validation_manifest_v1.csv');
 contractPath = fullfile(pwd, 'shared', 'contracts', ...
     'stage4_validation_manifest_contract_v1.json');
@@ -151,34 +160,34 @@ disp('Stage4 manifest preflight passed.');
 If the preflight passes, run a very small batch before the full stage4 job:
 
 ```matlab
-cfg = get_stage4_validation_config_targetband_v1();
+cfg = get_stage4_validation_config_targetband_top6_v1();
 run_stage4_validation_from_manifest(cfg, 1, 2);
 ```
 
 This runs rows `1:2` from the manifest and writes the same output family under:
 
-- `data/comsol_batch/stage4_validation_targetband_v1/`
+- `data/comsol_batch/stage4_validation_targetband_top6_v1/`
 
 ## 7C. MATLAB Full Validation
 
 After the small-batch sanity check succeeds, run the normal wrapper:
 
 ```matlab
-run(fullfile(pwd, 'runners', 'run_stage4_validation_targetband_v1.m'));
+run(fullfile(pwd, 'runners', 'run_stage4_validation_targetband_top6_v1.m'));
 ```
 
 This is equivalent to:
 
 ```matlab
-cfg = get_stage4_validation_config_targetband_v1();
+cfg = get_stage4_validation_config_targetband_top6_v1();
 run_stage4_validation_from_manifest(cfg, 1, 0);
 ```
 
 Expected stage4 artifacts include:
 
-- `data/comsol_batch/stage4_validation_targetband_v1/stage4_validation_results.csv`
-- `data/comsol_batch/stage4_validation_targetband_v1/stage4_validation_point_summary.csv`
-- `data/comsol_batch/stage4_validation_targetband_v1/stage4_validation_shape_summary.csv`
+- `data/comsol_batch/stage4_validation_targetband_top6_v1/stage4_validation_results.csv`
+- `data/comsol_batch/stage4_validation_targetband_top6_v1/stage4_validation_point_summary.csv`
+- `data/comsol_batch/stage4_validation_targetband_top6_v1/stage4_validation_shape_summary.csv`
 
 ## 8. Build The Thesis-Facing Application Bundle
 
