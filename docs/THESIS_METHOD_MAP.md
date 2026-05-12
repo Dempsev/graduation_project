@@ -22,7 +22,7 @@ default workflow.
 | target-band parametric dataset | The consolidated supervised dataset that pairs structural descriptors with target-band labels and regression targets | `prediction_targetband_param_v1/runners/run_build_parametric_targetband_dataset_v1.py` | `data/prediction_targetband_param_v1/v1/windows_dense_v8_truth_plus_exploratory_aug_v1/` |
 | conditional classifier | The model that predicts target-band opening likelihood for a requested band | `prediction_targetband_param_v1/runners/run_train_parametric_targetband_classifier_v1.py` | `data/prediction_targetband_param_v1_runs/param_targetband_cls_rf_dense_v8_cmp_v1/stratified_group_kfold/` |
 | conditional regressor | The model that predicts target-band cover ratio / overlap quality for a requested band | `prediction_targetband_param_v1/runners/run_train_parametric_targetband_regressor_v1.py` | `data/prediction_targetband_param_v1_runs/param_targetband_cover_hgb_dense_v8_cmp_v1/stratified_group_kfold/` |
-| shape-aware front-end | The shape archetype / family interpretation layer used to explain why the target-band workflow is physically plausible and not a black box | `data/analysis/targetband_shape_atlas_v1/`, `docs/targetband_formal_execution_plan_v1.md` | `data/analysis/targetband_shape_atlas_v1/` |
+| shape-aware front-end | The shape archetype / family interpretation layer used to explain why the target-band workflow is physically plausible and not a black box | `prediction_targetband_param_v1/tools/build_targetband_shape_atlas_v1.py` | generated analysis tables and figures under ignored data artifacts |
 | seed scoring | The first prediction-guided screening step that ranks candidate seeds under a specified target band | `optimization/runners/run_targetband_seed_scoring_v1.py` | `data/ml_runs/targetband_seed_scoring_v1/band180_220/` |
 | local refinement / local GA | The prediction-guided local search step that refines promising seeds around the requested target band | `optimization/runners/run_targetband_local_ga_v1.py` | `data/ml_runs/targetband_local_ga_v1/band180_220_center_top6/` |
 | stage4 validation manifest | The COMSOL-ready shortlist exported from Python and handed to MATLAB through the shared manifest contract | `optimization/runners/run_targetband_validation_manifest_v1.py`, `shared/contracts/stage4_validation_manifest_contract_v1.json` | `data/ml_runs/targetband_local_ga_v1/band180_220_center_top6/validation_manifest_v1/` |
@@ -60,7 +60,7 @@ If you need to mention comparison lines, describe them as:
 Use `data/comsol_batch/stage4_validation_targetband_top6_v1/` as the
 chapter-6 Stage4 evidence source. It is the diversified top-6 validation batch
 that supports the thesis statement "6 submitted, 6 geometry-valid, 5
-contact-valid and solved, 5 positive `gap34` gains".
+contact-valid and solved, 5 positive gap34 gains".
 
 The older `data/comsol_batch/stage4_validation_targetband_v1/` batch remains a
 valid supplementary/refinement run, but it contains 4 solved rows from two

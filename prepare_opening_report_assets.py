@@ -15,8 +15,9 @@ from reportlab.platypus import PageBreak, Paragraph, SimpleDocTemplate, Spacer
 
 ROOT = Path(r"D:\graduation_project\coad")
 SRC_PPT = Path(r"D:\graduation_project\opening_report_continued_2026-03-25.pptx")
-OUT_PPT = ROOT / "opening_report_continued_2026-03-25_cn.pptx"
-OUT_PDF = ROOT / "opening_report_talk_notes_2026-04-02.pdf"
+OUT_DIR = ROOT / "output" / "ppt"
+OUT_PPT = OUT_DIR / "opening_report_continued_2026-03-25_cn.pptx"
+OUT_PDF = OUT_DIR / "opening_report_talk_notes_2026-04-02.pdf"
 
 
 REPLACEMENTS = [
@@ -449,6 +450,7 @@ def build_pdf() -> None:
 
 
 if __name__ == "__main__":
+    OUT_DIR.mkdir(parents=True, exist_ok=True)
     leftovers = localize_ppt()
     build_pdf()
     print(f"PPT -> {OUT_PPT}")

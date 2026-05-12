@@ -128,8 +128,8 @@ Use the following output interpretation:
   - `data/ml_runs/targetband_seed_scoring_v1/`
 - target-band local refinement outputs:
   - `data/ml_runs/targetband_local_ga_v1/`
-- shape-aware front-end artifacts:
-  - `data/analysis/targetband_shape_atlas_v1/`
+- shape-aware front-end builder:
+  - `prediction_targetband_param_v1/tools/build_targetband_shape_atlas_v1.py`
 - thesis-facing application bundles:
   - `data/prediction_targetband_param_v1_app/`
 - thesis documentation and narrative assets:

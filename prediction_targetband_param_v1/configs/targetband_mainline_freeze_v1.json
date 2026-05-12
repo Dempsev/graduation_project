@@ -29,9 +29,9 @@
     "shape_selection_mode": "band-aware family-balanced shape pool"
   },
   "evidence_anchors": {
-    "formal_plan_cn": "docs/targetband_formal_execution_plan_v1_cn.md",
-    "formal_plan_en": "docs/targetband_formal_execution_plan_v1.md",
-    "v8_refresh_summary": "docs/targetband_v8_refresh_summary.md",
+    "mainline_doc": "docs/THESIS_MAINLINE.md",
+    "method_map": "docs/THESIS_METHOD_MAP.md",
+    "runbook": "docs/THESIS_RUNBOOK.md",
     "exploratory_search_summary": "data/comsol_batch/comsol_in_loop_band_supplement_exploratory_v2/ga_band_catalog_summary_v1.csv"
   },
   "operational_rule": "Do not reopen model-family or mainline-definition debates unless strong new evidence materially outperforms this frozen stack."

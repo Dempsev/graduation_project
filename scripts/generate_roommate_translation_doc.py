@@ -9,7 +9,6 @@ from docx.shared import Cm, Pt
 
 OUTPUT_DIR = Path(r"D:\graduation_project\coad\output\doc")
 OUTPUT_PATH = OUTPUT_DIR / "毕业设计文献翻译-反推装置.docx"
-ROOT_COPY_PATH = Path(r"D:\graduation_project\coad\毕业设计文献翻译-反推装置.docx")
 PAGE_DIR = Path(r"D:\graduation_project\coad\tmp\roommate_pages")
 CROP_DIR = Path(r"D:\graduation_project\coad\tmp\roommate_crops")
 
@@ -285,9 +284,7 @@ def main() -> None:
     OUTPUT_DIR.mkdir(parents=True, exist_ok=True)
     doc = build_document()
     doc.save(OUTPUT_PATH)
-    doc.save(ROOT_COPY_PATH)
     print(OUTPUT_PATH)
-    print(ROOT_COPY_PATH)
 
 
 if __name__ == "__main__":

@@ -27,6 +27,14 @@ tmp_ppt_rebuild/
 output/
 .worktrees/
 
+# Thesis drafts, slides, translated papers, and exported reports belong in
+# ignored artifact folders rather than the repository root.
+*.doc
+*.docx
+*.pdf
+*.ppt
+*.pptx
+
 # Legacy snake runtime logs
 snake/__pycache__/
 snake/logs/
