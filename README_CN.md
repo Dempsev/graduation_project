@@ -64,7 +64,7 @@ coad/
 - 条件预测训练：`prediction_targetband_param_v1/runners/`
 - target-band 搜索：`optimization/runners/`
 - Stage4 验证：`runners/run_stage4_validation_targetband_top6_v1.m`
-- 论文图表辅助：`prediction_targetband_param_v1/tools/`、`postprocess/`、`scripts/`
+- 论文图表辅助：`prediction_targetband_param_v1/tools/`、`postprocess/`
 
 ## 环境
 
