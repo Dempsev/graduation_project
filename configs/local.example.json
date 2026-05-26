@@ -1,0 +1,24 @@
+{
+  "project_root": ".",
+  "python": {
+    "executable": "python"
+  },
+  "matlab": {
+    "executable": "D:/MatlabR2024b/matlab/bin/matlab.exe"
+  },
+  "comsol": {
+    "mphserver_executable": "D:/COMSOL/COMSOL63/Multiphysics/bin/win64/comsolmphserver.exe",
+    "mli_path": "D:/COMSOL/COMSOL63/Multiphysics/mli",
+    "port": 2036
+  },
+  "paths": {
+    "data_root": "data",
+    "output_root": "output",
+    "research_validation_root": "research_validation"
+  },
+  "execution_policy": {
+    "allow_comsol": false,
+    "allow_real_ga": false,
+    "default_dry_run": true
+  }
+}

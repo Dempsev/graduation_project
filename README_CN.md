@@ -1,93 +1,120 @@
-# COAD：力学超结构物理-数据协同优化代码仓库
+# COAD：目标频带声子晶体设计研究代码库
 
-## 项目概述
+COAD 是一个面向二维声子晶体单胞目标频带设计的毕业设计研究工作区。它不是打包好的终端软件，而是论文背后的可追溯代码、配置和证据链。
 
-本仓库对应毕业课题“基于物理-数据协同优化算法的一种力学超结构设计”。它不是面向终端用户打包的软件包，而是一套研究型代码仓库：用 COMSOL 与 MATLAB 产生可信物理真值，用数据模型完成目标频带条件预测，再用预测结果引导候选结构搜索，并回到 COMSOL 做真实物理验证。
-
-当前论文主线已经收敛为 **冻结 target-band 条件预测与逆向设计工作流**。旧的 `v10/v11`、`ga_v1` 和更早 `stage3_training/` 路线仍然保留，但它们主要承担历史桥接、基线比较和复现实验的作用，不再是默认叙事主线。
-
-## 当前主线
-
-项目主线可以概括为一条物理-数据闭环：
-
-1. 物理真值生产：用 COMSOL + MATLAB 生成结构样本、带隙结果和验证记录。
-2. target-band 数据构造：围绕论文目标频带建立可训练、可解释的条件预测数据集。
-3. 条件预测建模：训练面向给定频带的分类/回归模型，把模型定位为候选筛选器，而不是物理求解器替代品。
-4. 预测引导搜索：在候选种子与局部参数空间中筛出更可能满足目标频带的结构。
-5. Stage4 物理验证：把 shortlist 交回 COMSOL 验证，形成论文第 6 章使用的真实证据。
-
-这条主线对应的核心叙事是：
+最终论文主线是：
 
 ```text
-物理真值生产 -> 目标频带数据构造 -> 条件预测 -> 预测引导搜索/精化 -> COMSOL 验证
+COMSOL 频散物理真值
+-> 目标频带条件预测
+-> 真实 COMSOL-in-loop 遗传优化
+-> 预测 Top5 / 随机候选 / GA 结果对比验证
+-> 高频弱频带边界分析
 ```
 
-## 仓库结构
+## 方法边界
+
+本项目不声称机器学习模型替代有限元计算。更准确的边界是：
+
+- COMSOL 频散计算是物理真值来源。
+- 预测模型只负责候选筛选和排序。
+- 真实 COMSOL-in-loop GA 是优化基线。
+- 最终性能结论必须回到 COMSOL 验证后的重叠宽度和覆盖率。
+- 220-260 Hz 与 240-280 Hz 高频弱频带主要体现当前结构族和参数化空间的边界。
+
+最终使用的六个目标频带为：
 
 ```text
-coad/
-  physics_pipeline/                 物理真值生产入口
-  prediction_targetband_param_v1/    target-band 条件预测主线
-  optimization/                     预测引导搜索与局部精化
-  stage4_validation/                COMSOL 验证配置与共享验证逻辑
-  runners/                          MATLAB/COMSOL 批处理入口
-  postprocess/                      结果解析、场图导出与论文图表辅助
-  docs/                             论文主线、方法映射、写作材料与说明文档
-  shared/                           共享契约与工具
-  baselines/                        历史或比较工作流
-
-  stage1/、stage2*/、stage3_*        历史真值生产、数据集和模型路线
-  data/                             本地生成产物，不纳入 git
-  output/                           本地图表与导出结果，不纳入 git
-  tmp/                              临时文件，不纳入 git
+140-180 Hz
+160-200 Hz
+180-220 Hz
+200-240 Hz
+220-260 Hz
+240-280 Hz
 ```
 
-## 推荐阅读顺序
+## 当前公开版状态
 
-如果要理解当前主线，建议按这个顺序阅读：
+当前分支已经完成 P0-P5 的公开版重构：文档索引、可复现说明、公共脚本入口、源代码迁移、历史路线归档、补充证据目录策略都已经就位。下一步主要是最终 staging、commit 和 push 前审查。
 
-1. `README.md` 或 `README_CN.md`
-2. `docs/THESIS_MAINLINE.md`
-3. `docs/THESIS_RUNBOOK.md`
-4. `docs/THESIS_METHOD_MAP.md`
-5. `docs/architecture/targetband_mainline_freeze_v1.md`
-6. `physics_pipeline/`
-7. `prediction_targetband_param_v1/`
-8. `optimization/`
-9. `stage4_validation/`
+建议先阅读：
 
-如果需要解释历史演化或做对比，再阅读 `stage3_training/`、`baselines/` 以及旧验证 runner。
+- [项目结构](docs/project/PROJECT_STRUCTURE.md)
+- [COMSOL 脚本索引](docs/project/COMSOL_SCRIPT_INDEX.md)
+- [Runner 风险索引](docs/project/RUNNER_RISK_INDEX.md)
+- [GitHub 发布检查清单](docs/project/GITHUB_PUBLISH_CHECKLIST.md)
+- [最终复现流程](docs/reproducibility/FINAL_RUNBOOK.md)
+- [最终结果索引](docs/reproducibility/FINAL_RESULTS_INDEX.md)
+- [数据集清单](docs/reproducibility/DATASET_MANIFEST.md)
+- [论文结果映射](docs/thesis/THESIS_RESULT_MAP.md)
+- [重构审计](REFACTOR_AUDIT.md)
+- [重构计划](FINAL_REFACTOR_PLAN.md)
+- [P4 重构报告](P4_REFACTOR_REPORT.md)
+- [P5 发布准备报告](P5_PUBLISH_READINESS_REPORT.md)
 
-## 关键代码入口
+公共入口现在放在 `scripts/`，包括数据集构建、模型训练、结果导出、COMSOL/GA 入口包装，以及论文图表和报告生成。
 
-- 物理真值层：`physics_pipeline/`
-- 条件预测训练：`prediction_targetband_param_v1/runners/`
-- target-band 搜索：`optimization/runners/`
-- Stage4 验证：`runners/run_stage4_validation_targetband_top6_v1.m`
-- 论文图表辅助：`prediction_targetband_param_v1/tools/`、`postprocess/`
+## 当前代码区域
+
+| 模块 | 当前路径 | 作用 |
+| --- | --- | --- |
+| 几何生成 | `snake/`, `preprocess/` | 结构生成和参数化几何构造 |
+| COMSOL 流程 | `model_core/`, `physics_pipeline/` | COMSOL 模型构建与物理真值流程 |
+| 数据集 | `src/prediction/targetband_param/dataset/` | 目标频带数据集构建 |
+| 预测模型 | `src/prediction/targetband_param/` | 条件分类、条件回归和推理工具 |
+| 优化 | `optimization/real_comsol_ga/` | 真实 COMSOL-in-loop GA |
+| 候选排序 | `src/optimization/seed_ranking/` | 候选池、Top-k 排序和验证清单 |
+| 验证 | `stage4_validation/`, `src/shared/` | Stage4 验证配置、共享契约和 IO |
+| 图表与报告 | `postprocess/`, `research_validation/` | 论文图表、表格和章节证据 |
+
+旧的 `prediction_targetband_param_v1/`、`prediction_v*`、`shared/` 和 `optimization/seed_ranking/` 根目录已经改为轻量兼容入口，真实主线代码位于 `src/` 或历史归档位于 `archive/`。
+
+## 数据和产物策略
+
+仓库只追踪代码、配置、轻量报告和复现索引，不直接追踪大型生成结果。
+
+本地忽略目录和文件包括：
+
+- `data/`：COMSOL 输出、训练集、模型结果、验证清单。
+- `output/`：论文 PDF、导出图、答辩素材。
+- `tmp/`, `tmp_ppt_rebuild/`, `tmp_ppt_render/`：临时构建产物。
+- `research_validation/` 下生成的 CSV、PNG、SVG、PDF、JSON 和 TXT 结果。
+
+需要定位结果时，请查看 `docs/reproducibility/` 下的索引文档，不要把大文件直接提交进 Git。
 
 ## 环境
 
-项目通常使用：
+常用环境：
 
+- Windows / PowerShell
+- Python 3.12 或兼容 Python 3
 - MATLAB
 - COMSOL with MATLAB LiveLink
-- Python 3
-- Python 常用库：`numpy`、`pandas`、`torch`、`matplotlib`、`scikit-learn`
+- 常用 Python 包：`numpy`, `pandas`, `matplotlib`, `scikit-learn`, `joblib`
 
-## 数据管理原则
+机器相关路径请参考 `configs/local.example.json`，不要把个人机器路径硬编码进公开脚本。
 
-本仓库保存的是代码、配置和流程定义；运行后生成的数据、图表、模型与日志保留在本地输出目录中。
+## 安全检查
 
-- `data/`：仿真结果、训练表、manifest、模型检查点和批处理输出。
-- `output/`：论文图表、导出图片和文档中间产物。
-- `tmp/`：临时构建、渲染和检查文件。
+轻量检查命令：
 
-这些目录已通过 `.gitignore` 排除，仓库主线保持轻量、可读、可复现。
+```powershell
+python scripts\check_project\check_public_layout.py
+python -m unittest tests.test_thesis_mainline_smoke
+```
 
-## 本仓库适合做什么
+这些检查不应启动大型 COMSOL 作业。运行任何可能启动 COMSOL 的脚本前，请先阅读：
 
-- 复现毕业论文中的物理-数据协同设计流程。
-- 追踪 target-band 条件预测模型如何进入逆向设计。
-- 说明候选结构如何从预测筛选进入 COMSOL 验证。
-- 为论文方法、实验、讨论和附录提供真实代码与文档依据。
+- [COMSOL 脚本索引](docs/project/COMSOL_SCRIPT_INDEX.md)
+
+## 许可证
+
+当前尚未选择公开许可证。在项目作者正式添加 `LICENSE` 文件前，本仓库代码和论文材料默认按保留所有权利处理。
+
+## 答辩版快照
+
+公开重构前的答辩基线已保留：
+
+- 分支：`codex/final-public-refactor`
+- 标签：`defense-final-snapshot-2026`
+- 状态记录：[Original State Archive](ARCHIVE_ORIGINAL_STATE.md)

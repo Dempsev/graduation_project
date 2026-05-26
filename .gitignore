@@ -1,4 +1,4 @@
-﻿# Editors / IDEs
+# Editors / IDEs
 .vscode/
 .idea/
 *.swp
@@ -24,8 +24,19 @@ data/
 web/
 tmp/
 tmp_ppt_rebuild/
+tmp_ppt_render/
 output/
 .worktrees/
+
+# Chapter evidence source files live under research_validation/. Generated
+# tables, rendered figures, local checklists, and export notes are reproducible
+# from the tracked scripts and public wrappers.
+research_validation/**/*.csv
+research_validation/**/*.png
+research_validation/**/*.svg
+research_validation/**/*.pdf
+research_validation/**/*.txt
+research_validation/**/*.json
 
 # Thesis drafts, slides, translated papers, and exported reports belong in
 # ignored artifact folders rather than the repository root.

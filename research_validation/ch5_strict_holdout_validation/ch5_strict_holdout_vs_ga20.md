@@ -1,0 +1,8 @@
+| target_band | ga20_best_overlap_Hz | ga20_best_cover_ratio | ga20_evaluations | strict_pred_top5_best_overlap_Hz | strict_pred_top5_best_cover_ratio | strict_random5_best_overlap_Hz | strict_random5_best_cover_ratio | strict_pred_top5_to_ga_overlap_ratio | strict_pred_top5_to_ga_cover_ratio | strict_random5_to_ga_overlap_ratio | strict_random5_to_ga_cover_ratio | pred_minus_random_overlap | pred_minus_random_cover | conclusion_tag | note |
+| --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- | --- |
+| 140–180 Hz | 22.2665 | 0.556662 | 120 | 25.9619 | 0.649049 | 20.0271 | 0.500677 | 1.16597 | 1.16597 | 0.899427 | 0.899427 | 5.93487 | 0.148372 | pred_better |  |
+| 160–200 Hz | 32.4455 | 0.811139 | 120 | 35.9722 | 0.899304 | 28.7624 | 0.719061 | 1.10869 | 1.10869 | 0.886483 | 0.886483 | 7.20974 | 0.180243 | pred_better |  |
+| 180–220 Hz | 40 | 1 | 120 | 39.9681 | 0.999202 | 11.8553 | 0.296382 | 0.999202 | 0.999202 | 0.296382 | 0.296382 | 28.1128 | 0.70282 | pred_better |  |
+| 200–240 Hz | 35.2829 | 0.882073 | 120 | 34.7976 | 0.86994 | 20.8177 | 0.520442 | 0.986244 | 0.986244 | 0.590021 | 0.590021 | 13.9799 | 0.349498 | pred_better |  |
+| 220–260 Hz | 4.09755 | 0.102439 | 120 | 9.96378 | 0.249095 | 1.94244 | 0.0485609 | 2.43164 | 2.43164 | 0.474048 | 0.474048 | 8.02135 | 0.200534 | pred_better |  |
+| 240–280 Hz | 3.93445 | 0.0983613 | 120 | 1.20465 | 0.0301162 | 1.22997 | 0.0307492 | 0.306179 | 0.306179 | 0.312615 | 0.312615 | -0.0253216 | -0.000633041 | random_not_worse |  |

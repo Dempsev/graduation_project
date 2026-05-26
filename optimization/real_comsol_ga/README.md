@@ -4,11 +4,13 @@ This module implements a real COMSOL-in-the-loop genetic algorithm for the optim
 
 It is now the task-oriented implementation root for the real-GA branch.
 
-The older `stage3_optimization_real_ga/` directory is retained as a compatibility copy during the refactor.
+The older `stage3_optimization_real_ga/` directory has moved to
+`archive/legacy_stage_pipelines/stage3_optimization_real_ga/`.
 
 ## Why this exists
 
-The earlier GA branches in `stage3_optimization/` optimize surrogate-model scores.
+The earlier GA branches in `archive/legacy_stage_pipelines/stage3_optimization/`
+optimize surrogate-model scores.
 
 That is fast, but it can overfit model bias when the search drifts outside the historical training distribution.
 

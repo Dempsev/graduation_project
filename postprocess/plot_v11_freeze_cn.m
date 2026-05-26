@@ -33,6 +33,7 @@ end
 
 function exportBoth(fig, figDir, stem)
 exportgraphics(fig, fullfile(figDir, stem + ".png"), 'Resolution', 300);
+print(fig, fullfile(figDir, stem + ".svg"), '-dsvg');
 savefig(fig, fullfile(figDir, stem + ".fig"));
 close(fig);
 end

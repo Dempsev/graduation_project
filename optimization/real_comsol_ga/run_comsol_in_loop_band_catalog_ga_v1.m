@@ -224,7 +224,7 @@ shapePools.unionPool = unique_shape_rows(vertcat(poolFrames{:}));
 end
 
 function shapePool = load_legacy_shape_pool(cfg)
-shapePool = readtable(cfg.shapePoolCsv, 'TextType', 'string');
+shapePool = readtable(cfg.shapePoolCsv, 'TextType', 'string', 'Delimiter', ',', 'VariableNamingRule', 'preserve');
 shapePool = normalize_legacy_shape_pool(cfg, shapePool);
 if isempty(shapePool)
     error('run_comsol_in_loop_band_catalog_ga_v1:EmptyShapePool', 'Shape pool is empty after filtering.');
@@ -232,6 +232,14 @@ end
 end
 
 function shapePool = normalize_legacy_shape_pool(cfg, shapePool)
+if isfield(cfg, 'useDiscretePerturbation') && ~cfg.useDiscretePerturbation
+    shapePool = shapePool(1, :);
+    shapePool.shape_id = "fourier_pure_boundary";
+    shapePool.shape_family = "fourier";
+    shapePool.shape_file = "";
+    shapePool.shape_pool_tier = "fourier_only";
+    return;
+end
 if ismember('geometry_valid', shapePool.Properties.VariableNames) && cfg.shapePoolRequireGeometryValid
     shapePool = shapePool(as_logical(shapePool.geometry_valid), :);
 end
@@ -332,6 +340,21 @@ if isfile(cfg.stateMat)
             error('run_comsol_in_loop_band_catalog_ga_v1:ShapePoolMismatch', ...
                 'Existing band-catalog GA state was created with a different shape pool. Remove %s to restart.', cfg.stateMat);
         end
+        return;
+    elseif isfield(loaded, 'state') && isfield(cfg, 'allowStateExtension') && cfg.allowStateExtension
+        state = loaded.state;
+        if ~isequal(string(state.shapePoolIds(:)), string(shapePool.shape_id(:)))
+            error('run_comsol_in_loop_band_catalog_ga_v1:ShapePoolMismatch', ...
+                'Existing band-catalog GA state was created with a different shape pool. Remove %s to restart.', cfg.stateMat);
+        end
+        if numel(state.populations) < cfg.maxGenerations
+            state.populations{cfg.maxGenerations} = [];
+        end
+        if state.nextGeneration <= cfg.maxGenerations
+            state.stopped = false;
+            state.stopReason = "";
+        end
+        save_state(cfg, state);
         return;
     end
 end
@@ -990,7 +1013,19 @@ bestWidthHz = row.active_target_best_width_Hz;
 if ~isfinite(bestWidthHz)
     bestWidthHz = 0;
 end
-fitness = coverRatio + 0.0005 * overlapHz + 0.0001 * max(0, bestWidthHz);
+fitnessMetric = "cover_overlap_width";
+if isfield(cfg, 'fitnessMetric') && strlength(string(cfg.fitnessMetric)) > 0
+    fitnessMetric = string(cfg.fitnessMetric);
+end
+
+switch fitnessMetric
+    case "target_overlap_Hz"
+        fitness = overlapHz;
+    case "target_cover_ratio"
+        fitness = coverRatio;
+    otherwise
+        fitness = coverRatio + 0.0005 * overlapHz + 0.0001 * max(0, bestWidthHz);
+end
 end
 
 function band = resolve_active_band(cfg, generation)

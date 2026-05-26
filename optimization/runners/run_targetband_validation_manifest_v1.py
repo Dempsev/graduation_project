@@ -6,7 +6,7 @@ from pathlib import Path
 
 
 ROOT = Path(__file__).resolve().parents[2]
-TARGET = ROOT / 'optimization' / 'seed_ranking' / 'build_targetband_ga_validation_manifest_v1.py'
+TARGET = ROOT / 'src' / 'optimization' / 'seed_ranking' / 'build_targetband_ga_validation_manifest_v1.py'
 
 
 def main() -> None:

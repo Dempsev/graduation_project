@@ -1,140 +1,149 @@
-# COAD: Physics-Data Co-Optimization for Mechanical Metastructure Design
+# COAD: Target-Band Phononic Crystal Design
 
-## Overview
+COAD is a graduation-project research codebase for target-band design of
+two-dimensional phononic crystal unit cells.
 
-This repository contains the full working codebase for a graduation-project
-workflow on **bandgap-oriented design of mechanical / phononic metastructures**.
-
-It is a research workflow rather than a polished end-user package. The core
-pipeline is:
-
-1. physical truth production with COMSOL + MATLAB
-2. truth accumulation from screening, refinement, and validation rounds
-3. prediction / modeling on accumulated truth
-4. search / optimization with model guidance and real validation
-
-The repository is read through a thesis-facing three-layer architecture:
-
-1. `physics_pipeline/` as the **truth layer**
-2. `prediction/` as the **model layer**
-3. `optimization/` as the **search layer**
-
-## Official Thesis Mainline
-
-The repository now treats the **frozen target-band stack** as the single
-thesis-facing mainline.
-
-That mainline is:
-
-- truth production through the historical physics pipeline
-- conditional target-band prediction inside the thesis band catalog
-- prediction-guided target-band search / refinement
-- real COMSOL validation of shortlisted designs
-- consolidation into analysis outputs and thesis-facing bundles
-
-The authoritative freeze references are:
-
-- `docs/THESIS_MAINLINE.md`
-- `docs/architecture/targetband_mainline_freeze_v1.md`
-- `prediction_targetband_param_v1/configs/targetband_mainline_freeze_v1.json`
-- `prediction_targetband_param_v1/configs/thesis_band_catalog_v2.json`
-
-## Baselines And Historical Bridge Lines
-
-The repository also preserves older and comparison-oriented routes.
-
-These are still valuable, but they are **not** the default thesis mainline:
-
-- global / fixed-gap prediction lines
-- `v10/v11` seed-discovery validation routes
-- `ga_v1` gap34 local parametric search
-- true global real-GA gap34 optimization
-- historical mixed `stage3_training/` entrypoints
-
-Use them as:
-
-- baselines
-- historical bridge logic
-- reproducibility anchors
-- comparison routes against the frozen target-band thesis mainline
-
-## Repository Layout
-
-### Thesis-Facing Layout
+The final thesis workflow is:
 
 ```text
-coad/
-  physics_pipeline/         Truth-layer reading entry
-  prediction/               Model-layer reading entry
-  optimization/             Search-layer reading entry
-  baselines/                Historical or comparison workflows
-  shared/                   Shared helpers and contracts
-
-  stage1/                   Historical truth production
-  stage2/                   Historical truth production
-  stage2_refine/            Historical truth production
-  stage2_harmonics/         Historical truth production
-  stage2_harmonics_refine/  Historical truth production
-  stage3_dataset/           Historical dataset builders
-  stage3_training/          Historical bridge / baseline builders
-  stage4_validation/        Historical truth-layer validation
-  runners/                  MATLAB wrappers and legacy batch entrypoints
+COMSOL dispersion truth
+-> target-band conditional prediction
+-> real COMSOL-in-loop genetic optimization
+-> predictor Top5 / random / GA validation comparison
+-> high-frequency weak-band boundary analysis
 ```
 
-### Current Directory Interpretation
+The project is not a packaged end-user library. It is a reproducible research
+workspace that preserves the code, configs, and evidence chain behind the
+thesis.
 
-- `physics_pipeline/`
-  - official entry for physical truth production
-- `prediction/`
-  - official entry for thesis-facing prediction narrative
-- `optimization/`
-  - official entry for thesis-facing search narrative
-- `stage3_training/`
-  - preserved baseline / bridge layer, not the default thesis storyline
+## Final Research Story
 
-## Recommended Reading Order
+The thesis does not claim that machine learning replaces finite-element
+calculation. The boundary is stricter:
 
-If you want the thesis-facing structure, read in this order:
+- COMSOL dispersion calculation is the physical authority.
+- The prediction model screens and ranks candidates for a specified target
+  band.
+- Real COMSOL-in-loop GA provides the optimization baseline.
+- Final claims use COMSOL-validated overlap width and coverage ratio.
+- Weak performance at 220-260 Hz and 240-280 Hz is treated as a limitation of
+  the current structure family and parameterized design space.
 
-1. `docs/THESIS_MAINLINE.md`
-2. `docs/THESIS_RUNBOOK.md`
-3. `docs/THESIS_METHOD_MAP.md`
-4. `physics_pipeline/`
-5. `prediction/`
-6. `optimization/`
-7. `docs/mainline_structure.md`
+The six final target bands are:
 
-If you need historical baseline context afterward, then read:
+```text
+140-180 Hz
+160-200 Hz
+180-220 Hz
+200-240 Hz
+220-260 Hz
+240-280 Hz
+```
 
-- `stage3_training/`
+## Public Refactor Status
+
+This branch has completed the main public-refactor pass through P5. The current
+layout is ready for final staging review: public docs, source wrappers,
+archive notes, reproducibility indexes, and chapter-evidence tracking policy
+are all in place.
+
+Important starting points:
+
+- [Project Structure](docs/project/PROJECT_STRUCTURE.md)
+- [COMSOL Script Index](docs/project/COMSOL_SCRIPT_INDEX.md)
+- [Runner Risk Index](docs/project/RUNNER_RISK_INDEX.md)
+- [GitHub Publish Checklist](docs/project/GITHUB_PUBLISH_CHECKLIST.md)
+- [Final Runbook](docs/reproducibility/FINAL_RUNBOOK.md)
+- [Final Results Index](docs/reproducibility/FINAL_RESULTS_INDEX.md)
+- [Dataset Manifest](docs/reproducibility/DATASET_MANIFEST.md)
+- [Thesis Result Map](docs/thesis/THESIS_RESULT_MAP.md)
+- [Refactor Audit](REFACTOR_AUDIT.md)
+- [Refactor Plan](FINAL_REFACTOR_PLAN.md)
+- [P4 Refactor Report](P4_REFACTOR_REPORT.md)
+- [P5 Publish Readiness Report](P5_PUBLISH_READINESS_REPORT.md)
+
+Public wrappers now live under `scripts/`, including dataset building, model
+training, result export, and figure/report generation.
+
+## Current Code Areas
+
+| Area | Current path | Role |
+| --- | --- | --- |
+| Geometry | `snake/`, `preprocess/` | Snake-inspired and parameterized geometry construction |
+| COMSOL pipeline | `model_core/`, `physics_pipeline/` | COMSOL model construction and truth-layer workflow |
+| Dataset | `src/prediction/targetband_param/dataset/` | Target-band dataset construction |
+| Prediction | `src/prediction/targetband_param/` | Conditional classifier/regressor and inference tools |
+| Optimization | `optimization/real_comsol_ga/` | Real COMSOL-in-loop GA |
+| Candidate ranking | `src/optimization/seed_ranking/` | Candidate pools, Top-k selection, validation manifests |
+| Validation | `stage4_validation/`, `src/shared/` | Shared validation configs and contracts |
+| Figures and reports | `postprocess/`, `research_validation/` | Thesis figures, tables, and chapter-specific evidence |
+
+The target public module layout is staged under `src/`. The old
+`prediction_targetband_param_v1/`, `prediction_v*`, `shared/`, and
+`optimization/seed_ranking/` roots are kept as lightweight compatibility shims
+or archived historical routes.
+
+Historical prediction routes such as `prediction_v2` to `prediction_v7`, older
+stage pipelines, and many old `runners/` wrappers have moved into `archive/`.
+
+## Data And Artifact Policy
+
+The repository tracks workflow definitions, scripts, configs, and lightweight
+reports. It does not track full generated results.
+
+Ignored local roots:
+
+- `data/`: COMSOL outputs, datasets, model runs, validation manifests.
+- `output/`: thesis PDFs, exported figures, defense assets.
+- `tmp/`, `tmp_ppt_rebuild/`, `tmp_ppt_render/`: temporary build products.
+- generated `research_validation/` tables, figures, JSON checklists, and text
+  exports.
+
+Use the reproducibility docs to locate data roots instead of committing large
+artifacts.
 
 ## Environment
 
-Typical environment used by this project:
+Typical local environment:
 
+- Windows / PowerShell
+- Python 3.12 or compatible Python 3
 - MATLAB
 - COMSOL with MATLAB LiveLink
-- Python 3
-- Python packages used in the ML/training utilities:
-  - `numpy`
-  - `pandas`
-  - `torch`
-  - `matplotlib`
+- Python packages used across scripts: `numpy`, `pandas`, `matplotlib`,
+  `scikit-learn`, `joblib`
 
-## Commit And Data Policy
+Copy `configs/local.example.json` to a local, ignored config file before
+running machine-specific MATLAB/COMSOL wrappers.
 
-This repository tracks the workflow definition, not generated research outputs.
+## Safe First Checks
 
-- All generated tables, manifests, model checkpoints, COMSOL outputs, plots, and logs live under `data/`.
-- `data/` is git-ignored on purpose.
-- Do not commit generated artifacts from `data/`, `output/`, `tmp/`, or `.worktrees/`.
+These commands do not start large COMSOL jobs:
 
-## What This Repository Is Good For
+```powershell
+python scripts\check_project\check_public_layout.py
+python -m unittest tests.test_thesis_mainline_smoke
+```
 
-This codebase is appropriate for:
+The smoke test allows generated data under ignored `data/` roots to be absent
+where practical, while still checking public paths, contracts, and lightweight
+wrapper behavior.
 
-- reproducing the workflow logic used in the thesis
-- understanding the truth / model / search separation
-- following the frozen target-band thesis mainline end to end
-- using historical stage and seed routes as baselines or bridge comparisons
-- writing methods and workflow sections of the thesis from real code
+Before running any script that may start COMSOL, read:
+
+- [COMSOL Script Index](docs/project/COMSOL_SCRIPT_INDEX.md)
+
+## License
+
+No public license has been selected yet. Until a `LICENSE` file is added by the
+project author, the code and thesis materials should be treated as all rights
+reserved.
+
+## Defense Snapshot
+
+The pre-public-refactor baseline is preserved as:
+
+- branch: `codex/final-public-refactor`
+- tag: `defense-final-snapshot-2026`
+- state record: [Original State Archive](ARCHIVE_ORIGINAL_STATE.md)

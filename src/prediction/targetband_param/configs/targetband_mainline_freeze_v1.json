@@ -1,0 +1,38 @@
+{
+  "decision_name": "targetband_mainline_freeze_v1",
+  "status": "active",
+  "frozen_on": "2026-04-21",
+  "scope": {
+    "problem_definition": "thesis-band-catalog target-band conditional prediction and inverse design",
+    "claim_boundary": [
+      "current 2D phononic crystal workflow",
+      "current parameterized shape-family space",
+      "thesis band catalog internal conditional prediction and inverse design",
+      "generalization across unseen shape families",
+      "partial transfer across catalog bands"
+    ],
+    "non_claims": [
+      "arbitrary continuous-frequency generalization",
+      "universal cross-material generalization",
+      "fully general inverse design outside the current representation family"
+    ]
+  },
+  "frozen_mainline": {
+    "thesis_band_catalog": "src/prediction/targetband_param/configs/thesis_band_catalog_v2.json",
+    "default_dataset_tag": "windows_dense_v8_truth_plus_exploratory_aug_v1",
+    "default_dataset_path": "data/prediction_targetband_param_v1/v1/windows_dense_v8_truth_plus_exploratory_aug_v1/targetband_parametric_v1.csv",
+    "classifier_model_family": "random_forest",
+    "classifier_run_name": "param_targetband_cls_rf_dense_v8_cmp_v1",
+    "regressor_model_family": "hist_gradient_boosting",
+    "regressor_run_name": "param_targetband_cover_hgb_dense_v8_cmp_v1",
+    "shape_frontend": "data/analysis/targetband_shape_atlas_v1",
+    "shape_selection_mode": "band-aware family-balanced shape pool"
+  },
+  "evidence_anchors": {
+    "mainline_doc": "docs/thesis/THESIS_MAINLINE.md",
+    "method_map": "docs/thesis/THESIS_METHOD_MAP.md",
+    "runbook": "docs/reproducibility/FINAL_RUNBOOK.md",
+    "exploratory_search_summary": "data/comsol_batch/comsol_in_loop_band_supplement_exploratory_v2/ga_band_catalog_summary_v1.csv"
+  },
+  "operational_rule": "Do not reopen model-family or mainline-definition debates unless strong new evidence materially outperforms this frozen stack."
+}

@@ -1,0 +1,195 @@
+function manifestPath = export_ch5_pred_vs_ga20_unit_cells_v1(caseCsv)
+%EXPORT_CH5_PRED_VS_GA20_UNIT_CELLS_V1 Export true COMSOL unit-cell geometry.
+
+if nargin < 1 || strlength(string(caseCsv)) == 0
+    caseCsv = fullfile('D:\graduation_project\coad', 'research_validation', ...
+        'ch5_strict_holdout_validation', 'ch5_pred_vs_ga20_redraw_cases.csv');
+end
+
+rootDir = 'D:\graduation_project\coad';
+addpath(rootDir);
+addpath(fullfile(rootDir, 'model_core'));
+addpath(fullfile(rootDir, 'stage2_harmonics'));
+addpath(fullfile(rootDir, 'stage2_harmonics_refine'));
+addpath(fullfile(rootDir, 'optimization', 'real_comsol_ga'));
+addpath(fullfile(rootDir, 'shared', 'optimization_matlab'));
+
+outDir = fullfile(rootDir, 'research_validation', 'ch5_strict_holdout_validation');
+figDir = fullfile(outDir, 'figures', 'unit_cell_redraw_exports');
+workDir = fullfile(outDir, 'comsol_unit_cell_redraw_work');
+ensure_dir(figDir);
+ensure_dir(workDir);
+
+cases = readtable(caseCsv, 'TextType', 'string', 'Delimiter', ',', 'VariableNamingRule', 'preserve');
+records = repmat(empty_record(), height(cases), 1);
+
+for i = 1:height(cases)
+    row = cases(i, :);
+    fprintf('[UNIT-CELL] %d/%d %s %s %s\n', i, height(cases), ...
+        char(string(row.target_band_tag(1))), char(string(row.method(1))), char(string(row.candidate_id(1))));
+    try
+        records(i) = export_one_case(row, rootDir, figDir, workDir);
+    catch ME
+        rec = empty_record();
+        rec.target_band = string(row.target_band(1));
+        rec.target_band_tag = string(row.target_band_tag(1));
+        rec.method = string(row.method(1));
+        rec.candidate_id = string(row.candidate_id(1));
+        rec.shape_id = string(row.shape_id(1));
+        rec.shape_family = string(row.shape_family(1));
+        rec.status = "failed";
+        rec.error_message = string(ME.message);
+        records(i) = rec;
+        warning('export_ch5_pred_vs_ga20_unit_cells_v1:Failed', ...
+            'Failed to export %s: %s', char(string(row.candidate_id(1))), ME.message);
+    end
+end
+
+manifest = struct2table(records);
+manifestPath = fullfile(outDir, 'ch5_pred_vs_ga20_unit_cell_export_manifest.csv');
+writetable(manifest, manifestPath);
+fprintf('[MANIFEST] %s\n', manifestPath);
+end
+
+function rec = export_one_case(row, rootDir, figDir, workDir)
+tag = string(row.target_band_tag(1));
+method = string(row.method(1));
+candidateId = string(row.candidate_id(1));
+sampleId = sanitize_id_for_ch5(candidateId);
+
+cfg = get_comsol_in_loop_ga_config_v1();
+cfg.outDir = fullfile(workDir, char(tag), char(method));
+cfg.tbl1Dir = fullfile(cfg.outDir, 'tbl1_exports');
+cfg.logsDir = fullfile(cfg.outDir, 'logs');
+cfg.plotDir = fullfile(cfg.outDir, 'plots');
+cfg.modelsDir = fullfile(cfg.outDir, 'models');
+cfg.saveModel = false;
+ensure_dir(cfg.outDir);
+ensure_dir(cfg.tbl1Dir);
+ensure_dir(cfg.logsDir);
+ensure_dir(cfg.plotDir);
+
+shapeFile = string(row.shape_file(1));
+if strlength(shapeFile) == 0 || ~isfile(shapeFile)
+    shapeFile = string(fullfile(rootDir, 'data', 'shape_contours', char(string(row.shape_id(1)) + ".csv")));
+end
+
+pointSpec = struct( ...
+    'main_id', char(string(row.main_id(1))), ...
+    'point_id', char(string(row.point_id(1))), ...
+    'a1', double(row.a1(1)), ...
+    'a2', double(row.a2(1)), ...
+    'b1', get_numeric_field(row, 'b1', 0), ...
+    'b2', double(row.b2(1)), ...
+    'r0', double(row.r0(1)), ...
+    'a3', double(row.a3(1)), ...
+    'b3', double(row.b3(1)), ...
+    'a4', double(row.a4(1)), ...
+    'b4', double(row.b4(1)), ...
+    'a5', double(row.a5(1)), ...
+    'b5', double(row.b5(1)) ...
+);
+
+[report, model] = validate_stage2_harmonics_geometry(cfg, pointSpec, char(shapeFile), char(sampleId));
+if isempty(model)
+    error('COMSOL geometry model was not created: %s', char(string(report.error_message)));
+end
+
+stem = sprintf('ch5_unit_cell_%s_%s', char(tag), char(method));
+pngPath = fullfile(figDir, [stem '.png']);
+svgPath = fullfile(figDir, [stem '.svg']);
+pdfPath = fullfile(figDir, [stem '.pdf']);
+export_geometry_figure(model, pngPath, svgPath, pdfPath);
+
+rec = empty_record();
+rec.target_band = string(row.target_band(1));
+rec.target_band_tag = tag;
+rec.method = method;
+rec.candidate_id = candidateId;
+rec.sample_id = sampleId;
+rec.shape_id = string(row.shape_id(1));
+rec.shape_family = string(row.shape_family(1));
+rec.geometry_valid = logical(report.geometry_valid);
+rec.contact_valid = logical(report.contact_valid);
+rec.n_domains = double(report.n_domains);
+rec.overlap_Hz = double(row.overlap_Hz(1));
+rec.cover_ratio = double(row.cover_ratio(1));
+rec.png_path = string(pngPath);
+rec.svg_path = string(svgPath);
+rec.pdf_path = string(pdfPath);
+rec.status = "ok";
+rec.error_message = string(report.error_message);
+fprintf('[PNG] %s\n', pngPath);
+end
+
+function export_geometry_figure(model, pngPath, svgPath, pdfPath)
+fig = figure('Visible', 'off', 'Color', 'white', 'Position', [100, 100, 980, 920]);
+cleanup = onCleanup(@() close(fig)); %#ok<NASGU>
+mphgeom(model, 'geom1', 'facemode', 'on', 'edgemode', 'on');
+ax = gca;
+axis(ax, 'equal');
+axis(ax, 'off');
+xlim(ax, [-0.026, 0.026]);
+ylim(ax, [-0.026, 0.026]);
+title(ax, '');
+set(ax, 'Units', 'normalized', 'Position', [0.02, 0.02, 0.96, 0.96]);
+set(ax, 'LooseInset', [0, 0, 0, 0]);
+set(findall(fig, '-property', 'FontName'), 'FontName', 'Microsoft YaHei');
+exportgraphics(fig, pngPath, 'Resolution', 450, 'BackgroundColor', 'white');
+try
+    print(fig, svgPath, '-dsvg');
+catch ME
+    warning('export_ch5_pred_vs_ga20_unit_cells_v1:SvgFailed', 'SVG export failed: %s', ME.message);
+end
+try
+    exportgraphics(fig, pdfPath, 'ContentType', 'vector', 'BackgroundColor', 'white');
+catch ME
+    warning('export_ch5_pred_vs_ga20_unit_cells_v1:PdfFailed', 'PDF export failed: %s', ME.message);
+end
+end
+
+function rec = empty_record()
+rec = struct( ...
+    'target_band', "", ...
+    'target_band_tag', "", ...
+    'method', "", ...
+    'candidate_id', "", ...
+    'sample_id', "", ...
+    'shape_id', "", ...
+    'shape_family', "", ...
+    'geometry_valid', false, ...
+    'contact_valid', false, ...
+    'n_domains', NaN, ...
+    'overlap_Hz', NaN, ...
+    'cover_ratio', NaN, ...
+    'png_path', "", ...
+    'svg_path', "", ...
+    'pdf_path', "", ...
+    'status', "", ...
+    'error_message', "" ...
+);
+end
+
+function value = get_numeric_field(row, name, fallback)
+value = fallback;
+if ismember(name, row.Properties.VariableNames)
+    value = double(row.(name)(1));
+end
+end
+
+function out = sanitize_id_for_ch5(value)
+out = regexprep(string(value), '[^A-Za-z0-9_]+', '_');
+out = regexprep(out, '_+', '_');
+if strlength(out) > 79
+    out = extractBefore(out, 80);
+end
+if strlength(out) == 0
+    out = "ch5_redraw_sample";
+end
+end
+
+function ensure_dir(pathStr)
+if ~exist(pathStr, 'dir')
+    mkdir(pathStr);
+end
+end

@@ -1,0 +1,151 @@
+# 第4章20代真实GA整理终端清单
+
+## 找到的输入文件
+- 140-180 Hz: `D:\graduation_project\coad\data\comsol_batch\comsol_in_loop_thesis_band140_180_overlap_ga_v1`
+  - ga_config_v1.json: OK
+  - ga_history_v1.csv: OK
+  - ga_generation_summary_v1.csv: OK
+  - ga_best_candidates_v1.csv: OK
+  - ga_search_summary_v1.csv: OK
+  - ga_state_v1.mat: OK
+- 160-200 Hz: `D:\graduation_project\coad\data\comsol_batch\comsol_in_loop_thesis_band160_200_overlap_ga_v1`
+  - ga_config_v1.json: OK
+  - ga_history_v1.csv: OK
+  - ga_generation_summary_v1.csv: OK
+  - ga_best_candidates_v1.csv: OK
+  - ga_search_summary_v1.csv: OK
+  - ga_state_v1.mat: OK
+- 180-220 Hz: `D:\graduation_project\coad\data\comsol_batch\comsol_in_loop_targetband180_220_overlap_ga_v1`
+  - ga_config_v1.json: OK
+  - ga_history_v1.csv: OK
+  - ga_generation_summary_v1.csv: OK
+  - ga_best_candidates_v1.csv: OK
+  - ga_search_summary_v1.csv: OK
+  - ga_state_v1.mat: OK
+- 200-240 Hz: `D:\graduation_project\coad\data\comsol_batch\comsol_in_loop_thesis_band200_240_overlap_ga_v1`
+  - ga_config_v1.json: OK
+  - ga_history_v1.csv: OK
+  - ga_generation_summary_v1.csv: OK
+  - ga_best_candidates_v1.csv: OK
+  - ga_search_summary_v1.csv: OK
+  - ga_state_v1.mat: OK
+- 220-260 Hz: `D:\graduation_project\coad\data\comsol_batch\comsol_in_loop_thesis_band220_260_overlap_ga_v1`
+  - ga_config_v1.json: OK
+  - ga_history_v1.csv: OK
+  - ga_generation_summary_v1.csv: OK
+  - ga_best_candidates_v1.csv: OK
+  - ga_search_summary_v1.csv: OK
+  - ga_state_v1.mat: OK
+- 240-280 Hz: `D:\graduation_project\coad\data\comsol_batch\comsol_in_loop_thesis_band240_280_overlap_ga_v1`
+  - ga_config_v1.json: OK
+  - ga_history_v1.csv: OK
+  - ga_generation_summary_v1.csv: OK
+  - ga_best_candidates_v1.csv: OK
+  - ga_search_summary_v1.csv: OK
+  - ga_state_v1.mat: OK
+
+## 20代完成情况与评价次数
+- 140-180 Hz: 20代完成=True, 实际评价次数=120, 成功求解=108
+- 160-200 Hz: 20代完成=True, 实际评价次数=120, 成功求解=112
+- 180-220 Hz: 20代完成=True, 实际评价次数=120, 成功求解=111
+- 200-240 Hz: 20代完成=True, 实际评价次数=120, 成功求解=109
+- 220-260 Hz: 20代完成=True, 实际评价次数=120, 成功求解=106
+- 240-280 Hz: 20代完成=True, 实际评价次数=120, 成功求解=105
+
+## 生成文件
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\build_ch4_ga_real_optimization_assets_20gen.py`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\ch4_constraints.csv`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\ch4_design_variables.csv`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\ch4_design_variables_and_constraints.md`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\ch4_ga_12to20_improvement.csv`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\ch4_ga_12to20_improvement.md`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\ch4_ga_config_table_20gen.csv`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\ch4_ga_config_table_20gen.md`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\CH4_GA_REAL_OPTIMIZATION_REPORT_20GEN.md`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\ch4_ga_summary_20gen.csv`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\ch4_ga_summary_20gen.md`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\ch4_generated_file_manifest_20gen.csv`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\ch4_selected_ga_directories_20gen.csv`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\ch4_selected_ga_directories_20gen.md`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\CH4_TERMINAL_CHECKLIST_20GEN.md`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\ch4_typical_cases_20gen.csv`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\ch4_typical_cases_20gen.md`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_1_real_ga_flowchart.pdf`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_1_real_ga_flowchart.png`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_1_real_ga_flowchart.svg`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_2_comsol_evaluation_flowchart.pdf`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_2_comsol_evaluation_flowchart.png`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_2_comsol_evaluation_flowchart.svg`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_3_ga_convergence_20gen.pdf`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_3_ga_convergence_20gen.png`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_3_ga_convergence_20gen.svg`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_4_best_overlap_bar_20gen.pdf`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_4_best_overlap_bar_20gen.png`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_4_best_overlap_bar_20gen.svg`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_5_success_active_rates_20gen.pdf`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_5_success_active_rates_20gen.png`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_5_success_active_rates_20gen.svg`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_best_unit_cells_6bands.pdf`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_best_unit_cells_6bands.png`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_best_unit_cells_6bands.svg`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_representative_unit_cells_3bands.pdf`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_representative_unit_cells_3bands.png`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_representative_unit_cells_3bands.svg`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_unit_cell_band140_180.pdf`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_unit_cell_band140_180.png`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_unit_cell_band140_180.svg`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_unit_cell_band160_200.pdf`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_unit_cell_band160_200.png`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_unit_cell_band160_200.svg`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_unit_cell_band180_220.pdf`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_unit_cell_band180_220.png`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_unit_cell_band180_220.svg`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_unit_cell_band200_240.pdf`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_unit_cell_band200_240.png`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_unit_cell_band200_240.svg`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_unit_cell_band220_260.pdf`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_unit_cell_band220_260.png`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_unit_cell_band220_260.svg`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_unit_cell_band240_280.pdf`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_unit_cell_band240_280.png`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_6_unit_cell_band240_280.svg`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_7_dispersion_band180_220.pdf`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_7_dispersion_band180_220.png`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_7_dispersion_band180_220.svg`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_7_dispersion_band200_240.pdf`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_7_dispersion_band200_240.png`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_7_dispersion_band200_240.svg`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_7_dispersion_band240_280.pdf`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_7_dispersion_band240_280.png`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_7_dispersion_band240_280.svg`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_7_representative_dispersion_3bands.pdf`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_7_representative_dispersion_3bands.png`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_fig4_7_representative_dispersion_3bands.svg`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_ga_12gen_vs_20gen_overlap.pdf`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_ga_12gen_vs_20gen_overlap.png`
+- `D:\graduation_project\coad\research_validation\ch4_ga_real_optimization\figures\ch4_ga_12gen_vs_20gen_overlap.svg`
+
+## 字段缺失或需要人工确认
+- 配置文件未显式给出“交叉概率”字段；根据脚本，非精英连续变量每次由双亲线性组合生成，形状基因从双亲二选一。
+- 设计变量物理含义按傅里叶/轮廓参数解释，正式论文中可结合第2章结构参数定义再精修。
+
+## 可直接放入第4章的图
+- `figures/ch4_fig4_1_real_ga_flowchart.png`
+- `figures/ch4_fig4_2_comsol_evaluation_flowchart.png`
+- `figures/ch4_fig4_3_ga_convergence_20gen.png`
+- `figures/ch4_fig4_4_best_overlap_bar_20gen.png`
+- `figures/ch4_fig4_5_success_active_rates_20gen.png`
+- `figures/ch4_fig4_6_best_unit_cells_6bands.png`
+- `figures/ch4_fig4_7_representative_dispersion_3bands.png`
+- `figures/ch4_ga_12gen_vs_20gen_overlap.png`
+
+## 12代到20代是否明显改善
+- 140-180 Hz: 改善 1.527 Hz，新最优出现在13-20代=是
+- 160-200 Hz: 改善 2.374 Hz，新最优出现在13-20代=是
+- 180-220 Hz: 改善 3.099 Hz，新最优出现在13-20代=是
+- 200-240 Hz: 改善 3.903 Hz，新最优出现在13-20代=是
+- 220-260 Hz: 改善 1.229 Hz，新最优出现在13-20代=是
+- 240-280 Hz: 改善 0.933 Hz，新最优出现在13-20代=是
+
+## 是否建议继续补跑高频目标
+- 建议谨慎继续。220-260 Hz 与240-280 Hz 的20代最优重叠宽度仍只有约4 Hz，延长代数带来局部改善的可能存在，但从当前20代收敛表现看，高频瓶颈更可能来自结构族/几何机制不足。建议优先作为论文中的高频困难案例呈现；若要提升高频结果，应先扩展形状族或参数化机制，再考虑更长GA。
