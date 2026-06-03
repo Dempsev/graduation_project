@@ -158,23 +158,10 @@ class ThesisMainlineSmokeTests(unittest.TestCase):
         with self.assertRaises(ValueError):
             validate_stage4_validation_manifest_frame(pd.DataFrame([{'validation_id': 'val001'}]))
 
-    def test_thesis_mainline_doc_sections_reference_existing_paths(self) -> None:
-        doc_path = ROOT / 'docs' / 'thesis' / 'THESIS_MAINLINE.md'
-        text = doc_path.read_text(encoding='utf-8')
-        self.assertIn('single official', text)
-
-        for heading in ['Stable Entrypoints', 'Output Layering']:
-            section = self._extract_section(text, heading)
-            paths = re.findall(r'`([^`]+)`', section)
-            self.assertGreater(len(paths), 0, f'{heading} should list at least one path.')
-            for path_text in paths:
-                local_path = ROOT / path_text.rstrip('/\\')
-                self.assertTrue(local_path.exists(), f'Documented path does not exist: {path_text}')
-
     def test_thesis_runbook_sections_reference_existing_paths(self) -> None:
         doc_path = ROOT / 'docs' / 'reproducibility' / 'FINAL_RUNBOOK.md'
         text = doc_path.read_text(encoding='utf-8')
-        self.assertIn('appendix-ready command list', text)
+        self.assertIn('compact command', text)
 
         for heading in ['Output Map']:
             section = self._extract_section(text, heading)
@@ -183,17 +170,6 @@ class ThesisMainlineSmokeTests(unittest.TestCase):
             for path_text in paths:
                 local_path = ROOT / path_text.rstrip('/\\')
                 self.assertTrue(local_path.exists(), f'Runbook path does not exist: {path_text}')
-
-    def test_thesis_method_map_references_existing_paths(self) -> None:
-        doc_path = ROOT / 'docs' / 'thesis' / 'THESIS_METHOD_MAP.md'
-        text = doc_path.read_text(encoding='utf-8')
-        self.assertIn('single official thesis mainline', text)
-
-        paths = re.findall(r'`([^`]+)`', text)
-        self.assertGreater(len(paths), 0, 'THESIS_METHOD_MAP.md should list repository paths.')
-        for path_text in paths:
-            local_path = ROOT / path_text.rstrip('/\\')
-            self.assertTrue(local_path.exists(), f'Method map path does not exist: {path_text}')
 
     @staticmethod
     def _extract_section(text: str, heading: str) -> str:

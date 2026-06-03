@@ -29,8 +29,8 @@
     "shape_selection_mode": "band-aware family-balanced shape pool"
   },
   "evidence_anchors": {
-    "mainline_doc": "docs/thesis/THESIS_MAINLINE.md",
-    "method_map": "docs/thesis/THESIS_METHOD_MAP.md",
+    "project_structure": "docs/project/PROJECT_STRUCTURE.md",
+    "results_index": "docs/reproducibility/FINAL_RESULTS_INDEX.md",
     "runbook": "docs/reproducibility/FINAL_RUNBOOK.md",
     "exploratory_search_summary": "data/comsol_batch/comsol_in_loop_band_supplement_exploratory_v2/ga_band_catalog_summary_v1.csv"
   },

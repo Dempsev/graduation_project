@@ -1,25 +1,14 @@
-# Thesis Runbook
+# Final Runbook
 
 ## Purpose
 
-This runbook turns the frozen target-band thesis mainline into a compact,
-appendix-ready command list.
-
-For the current v10 target-band experiment boundary and final figure/data
-selection, see `docs/archive/thesis_notes/THESIS_TARGETBAND_DATA_INDEX_V10.md` first. That index
-marks which older output directories are deprecated and which full-pool v10
-figures should be used in the thesis.
-
-It does **not** replace the broader architecture notes in
-`docs/thesis/THESIS_MAINLINE.md`. It exists so that a reader can answer:
+This runbook turns the frozen target-band workflow into a compact command
+list. It exists so that a reader can answer:
 
 - what to run
 - in what order
 - with which explicit frozen arguments
 - which output directory is authoritative
-
-Use `docs/thesis/THESIS_METHOD_MAP.md` when you want the thesis wording and code
-entrypoints side by side.
 
 All commands below assume the working directory is the repository root:
 

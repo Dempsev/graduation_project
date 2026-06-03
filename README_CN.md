@@ -1,6 +1,6 @@
 # COAD：目标频带声子晶体设计研究代码库
 
-COAD 是一个面向二维声子晶体单胞目标频带设计的毕业设计研究工作区。它不是打包好的终端软件，而是论文背后的可追溯代码、配置和证据链。
+COAD 是一个面向二维声子晶体单胞目标频带设计的研究工作区。它不是打包好的终端软件，而是保留最终研究流程背后可追溯代码、配置和证据链的仓库。
 
 最终论文主线是：
 
@@ -33,24 +33,18 @@ COMSOL 频散物理真值
 240-280 Hz
 ```
 
-## 当前公开版状态
+## 仓库导览
 
-当前分支已经完成 P0-P5 的公开版重构：文档索引、可复现说明、公共脚本入口、源代码迁移、历史路线归档、补充证据目录策略都已经就位。下一步主要是最终 staging、commit 和 push 前审查。
+仓库保留公开代码布局、公共脚本入口、历史路线归档和复现索引，便于检查或重新运行最终工作流。
 
 建议先阅读：
 
 - [项目结构](docs/project/PROJECT_STRUCTURE.md)
 - [COMSOL 脚本索引](docs/project/COMSOL_SCRIPT_INDEX.md)
 - [Runner 风险索引](docs/project/RUNNER_RISK_INDEX.md)
-- [GitHub 发布检查清单](docs/project/GITHUB_PUBLISH_CHECKLIST.md)
 - [最终复现流程](docs/reproducibility/FINAL_RUNBOOK.md)
 - [最终结果索引](docs/reproducibility/FINAL_RESULTS_INDEX.md)
 - [数据集清单](docs/reproducibility/DATASET_MANIFEST.md)
-- [论文结果映射](docs/thesis/THESIS_RESULT_MAP.md)
-- [重构审计](REFACTOR_AUDIT.md)
-- [重构计划](FINAL_REFACTOR_PLAN.md)
-- [P4 重构报告](P4_REFACTOR_REPORT.md)
-- [P5 发布准备报告](P5_PUBLISH_READINESS_REPORT.md)
 
 公共入口现在放在 `scripts/`，包括数据集构建、模型训练、结果导出、COMSOL/GA 入口包装，以及论文图表和报告生成。
 
@@ -111,10 +105,8 @@ python -m unittest tests.test_thesis_mainline_smoke
 
 当前尚未选择公开许可证。在项目作者正式添加 `LICENSE` 文件前，本仓库代码和论文材料默认按保留所有权利处理。
 
-## 答辩版快照
+## 归档快照
 
-公开重构前的答辩基线已保留：
+清理前的基线已保留为 Git 标签：
 
-- 分支：`codex/final-public-refactor`
 - 标签：`defense-final-snapshot-2026`
-- 状态记录：[Original State Archive](ARCHIVE_ORIGINAL_STATE.md)

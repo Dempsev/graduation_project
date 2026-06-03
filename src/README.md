@@ -1,10 +1,8 @@
 # Source Layout
 
-This directory is the target source layout for the final public refactor.
-
-P3 started by creating the public module map and safe entrypoints. The final
-target-band prediction and pure-Python seed-ranking paths have now moved under
-`src/`, while historical prediction lines live under `archive/legacy_prediction/`.
+This directory contains the public source layout. The final target-band
+prediction and pure-Python seed-ranking paths live under `src/`, while
+historical prediction lines live under `archive/legacy_prediction/`.
 
 Target modules:
 
@@ -19,4 +17,4 @@ Target modules:
 | `plotting/` | Plotting and figure-export helpers | `postprocess/`, `research_validation/` |
 | `shared/` | Shared contracts, IO, features, objectives | `src/shared/` |
 
-See `FINAL_REFACTOR_PLAN.md` for the full movement map.
+See `docs/project/PROJECT_STRUCTURE.md` for the current repository map.

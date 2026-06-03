@@ -1,7 +1,7 @@
 # COAD: Target-Band Phononic Crystal Design
 
-COAD is a graduation-project research codebase for target-band design of
-two-dimensional phononic crystal unit cells.
+COAD is a research codebase for target-band design of two-dimensional
+phononic crystal unit cells.
 
 The final thesis workflow is:
 
@@ -41,27 +41,19 @@ The six final target bands are:
 240-280 Hz
 ```
 
-## Public Refactor Status
+## Repository Guide
 
-This branch has completed the main public-refactor pass through P5. The current
-layout is ready for final staging review: public docs, source wrappers,
-archive notes, reproducibility indexes, and chapter-evidence tracking policy
-are all in place.
+The repository keeps the public code layout, source wrappers, archive notes,
+and reproducibility indexes needed to inspect or rerun the final workflow.
 
 Important starting points:
 
 - [Project Structure](docs/project/PROJECT_STRUCTURE.md)
 - [COMSOL Script Index](docs/project/COMSOL_SCRIPT_INDEX.md)
 - [Runner Risk Index](docs/project/RUNNER_RISK_INDEX.md)
-- [GitHub Publish Checklist](docs/project/GITHUB_PUBLISH_CHECKLIST.md)
 - [Final Runbook](docs/reproducibility/FINAL_RUNBOOK.md)
 - [Final Results Index](docs/reproducibility/FINAL_RESULTS_INDEX.md)
 - [Dataset Manifest](docs/reproducibility/DATASET_MANIFEST.md)
-- [Thesis Result Map](docs/thesis/THESIS_RESULT_MAP.md)
-- [Refactor Audit](REFACTOR_AUDIT.md)
-- [Refactor Plan](FINAL_REFACTOR_PLAN.md)
-- [P4 Refactor Report](P4_REFACTOR_REPORT.md)
-- [P5 Publish Readiness Report](P5_PUBLISH_READINESS_REPORT.md)
 
 Public wrappers now live under `scripts/`, including dataset building, model
 training, result export, and figure/report generation.
@@ -140,10 +132,7 @@ No public license has been selected yet. Until a `LICENSE` file is added by the
 project author, the code and thesis materials should be treated as all rights
 reserved.
 
-## Defense Snapshot
+## Archive Snapshot
 
-The pre-public-refactor baseline is preserved as:
-
-- branch: `codex/final-public-refactor`
-- tag: `defense-final-snapshot-2026`
-- state record: [Original State Archive](ARCHIVE_ORIGINAL_STATE.md)
+The pre-cleanup baseline is preserved as the Git tag
+`defense-final-snapshot-2026`.
